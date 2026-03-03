@@ -1,12 +1,12 @@
-/**
- * Accounts Receivable App Logic
- * Uses LocalStorage for data persistence.
- */
+const SUPABASE_URL = 'https://pdauvrbwudggldekvgqk.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_u0jFS226U6u3lz2oGUabew_d4FfXh-x';
+const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 class AccountsApp {
     constructor() {
-        this.clients = JSON.parse(localStorage.getItem('ar_clients')) || [];
-        this.transactions = JSON.parse(localStorage.getItem('ar_transactions')) || [];
+        this.supabase = _supabase;
+        this.clients = [];
+        this.transactions = [];
         this.currentViewId = 'dashboard-view';
         this.currentClientId = null;
         this.exchangeRate = parseFloat(localStorage.getItem('ar_exchange_rate')) || 1;
@@ -16,9 +16,10 @@ class AccountsApp {
         this.init();
     }
 
-    init() {
+    async init() {
         document.getElementById('exchangeRateInput').value = this.exchangeRate.toFixed(2);
         this.bindEvents();
+        await this.syncWithSupabase();
         this.renderDashboard();
         this.renderSparkline();
         this.fetchBCVRate(); // Sync on load
@@ -95,11 +96,66 @@ class AccountsApp {
         });
     }
 
-    // --- State & Storage ---
+    // --- State & Storage (Supabase) ---
 
-    saveData() {
-        localStorage.setItem('ar_clients', JSON.stringify(this.clients));
-        localStorage.setItem('ar_transactions', JSON.stringify(this.transactions));
+    async syncWithSupabase() {
+        // First check if migration is needed
+        const localClients = JSON.parse(localStorage.getItem('ar_clients')) || [];
+        const localTransactions = JSON.parse(localStorage.getItem('ar_transactions')) || [];
+
+        if (localClients.length > 0) {
+            console.log("Migrating local data to Supabase...");
+            await this.migrateLocalToSupabase(localClients, localTransactions);
+            localStorage.removeItem('ar_clients');
+            localStorage.removeItem('ar_transactions');
+            this.showToast('Datos localizados migrados a la nube');
+        }
+
+        const { data: clients, error: cErr } = await this.supabase.from('clients').select('*');
+        const { data: transactions, error: tErr } = await this.supabase.from('transactions').select('*');
+
+        if (!cErr) this.clients = clients.map(c => ({
+            ...c,
+            id: c.local_id || c.id // Maintain compatibility if migrated
+        }));
+
+        if (!tErr) this.transactions = transactions.map(t => ({
+            ...t,
+            id: t.local_id || t.id
+        }));
+    }
+
+    async migrateLocalToSupabase(clients, transactions) {
+        for (const c of clients) {
+            const { data: newC, error } = await this.supabase.from('clients').upsert({
+                name: c.name,
+                category: c.category,
+                phone: c.phone,
+                email: c.email,
+                address: c.address,
+                created_at: new Date(c.createdAt).toISOString(),
+                local_id: c.id
+            }).select().single();
+
+            if (newC) {
+                const clientTxs = transactions.filter(t => t.clientId === c.id);
+                for (const t of clientTxs) {
+                    await this.supabase.from('transactions').insert({
+                        client_id: newC.id,
+                        type: t.type,
+                        amount: t.amount,
+                        description: t.description,
+                        created_at: new Date(t.createdAt).toISOString(),
+                        local_id: t.id
+                    });
+                }
+            }
+        }
+    }
+
+    async saveData() {
+        // In this version, saveData is for updating the UI after remote sync
+        await this.syncWithSupabase();
         this.renderDashboard();
         if (this.currentClientId && this.currentViewId === 'client-profile-view') {
             this.renderClientProfile(this.currentClientId);
@@ -545,7 +601,7 @@ class AccountsApp {
 
     // --- Clients Logic ---
 
-    handleClientSubmit() {
+    async handleClientSubmit() {
         const idInput = document.getElementById('clientId').value;
         const name = document.getElementById('clientName').value;
         const category = document.getElementById('clientCategory').value;
@@ -557,31 +613,37 @@ class AccountsApp {
 
         if (idInput) {
             // Edit existing
-            const client = this.getClient(idInput);
-            if (client) {
-                client.name = name;
-                client.category = category;
-                client.phone = phone;
-                client.email = email;
-                client.address = address;
-                this.showToast('Cliente actualizado');
+            // Find remote ID first
+            const localClient = this.clients.find(c => c.id === idInput);
+            const remoteId = localClient.remote_id || localClient.id; // Check both
+
+            const { error } = await this.supabase.from('clients').update({
+                name, category, phone, email, address
+            }).filter('local_id', 'eq', idInput); // Better filter using local_id
+
+            if (error) {
+                // If local_id match fails, try UUID if it's a UUID
+                await this.supabase.from('clients').update({
+                    name, category, phone, email, address
+                }).eq('id', idInput);
             }
+            this.showToast('Cliente actualizado');
         } else {
             // Create new
-            const newClient = {
-                id: this.getUniqueId(),
-                name,
-                category,
-                phone,
-                email,
-                address,
-                createdAt: Date.now()
-            };
-            this.clients.push(newClient);
+            const localId = this.getUniqueId();
+            const { error } = await this.supabase.from('clients').insert({
+                name, category, phone, email, address, local_id: localId
+            });
+
+            if (error) {
+                console.error("Supabase Error:", error);
+                this.showToast('Error al registrar cliente', 'error');
+                return;
+            }
             this.showToast('Cliente registrado con éxito');
         }
 
-        this.saveData();
+        await this.saveData();
         this.switchView('clients-view');
     }
 
@@ -691,24 +753,34 @@ class AccountsApp {
         setTimeout(() => modal.classList.add('hidden'), 300);
     }
 
-    handleTransactionSubmit() {
+    async handleTransactionSubmit() {
         const type = document.getElementById('txType').value;
         const amount = parseFloat(document.getElementById('txAmount').value);
         const description = document.getElementById('txDescription').value;
 
         if (!amount || amount <= 0 || !description.trim()) return;
 
-        const newTx = {
-            id: this.getUniqueId(),
-            clientId: this.currentClientId,
+        // Get the remote UUID for the client
+        const localClient = this.clients.find(c => c.id === this.currentClientId);
+        // Find by local_id in Supabase
+        const { data: clients } = await this.supabase.from('clients').select('id').eq('local_id', this.currentClientId);
+        let remoteClientId = clients && clients[0] ? clients[0].id : this.currentClientId;
+
+        const { error } = await this.supabase.from('transactions').insert({
+            client_id: remoteClientId,
             type,
             amount,
             description,
-            createdAt: Date.now()
-        };
+            local_id: this.getUniqueId()
+        });
 
-        this.transactions.push(newTx);
-        this.saveData();
+        if (error) {
+            console.error("Supabase Error:", error);
+            this.showToast('Error al registrar transacción', 'error');
+            return;
+        }
+
+        await this.saveData();
         this.closeTransactionModal();
         this.showToast(type === 'SALE' ? 'Venta registrada' : 'Abono registrado');
     }
