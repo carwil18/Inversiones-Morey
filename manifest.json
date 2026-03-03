@@ -1,0 +1,16 @@
+{
+  "name": "Inversiones Morey - Cuentas por Cobrar",
+  "short_name": "Inversiones Morey",
+  "description": "Sistema de gestión de clientes y cuentas por cobrar.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#1a1c2c",
+  "theme_color": "#1a1c2c",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

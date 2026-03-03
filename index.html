@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuentas por Cobrar</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Favicon & Icons -->
+    <link rel="icon" type="image/png" href="icon.png">
+    <link rel="apple-touch-icon" href="icon.png">
+    <!-- Progressive Web App Layout -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1c2c">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <Sidebar class="sidebar">
+            <div class="sidebar-header">
+                <i class="ph ph-wallet"></i>
+                <h2>Inversiones Morey</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" data-target="dashboard-view">
+                    <i class="ph ph-squares-four"></i> Dashboard
+                </button>
+                <button class="nav-item" data-target="add-client-view">
+                    <i class="ph ph-user-plus"></i> Nuevo Cliente
+                </button>
+                <button class="nav-item" data-target="clients-view">
+                    <i class="ph ph-users"></i> Mis Clientes
+                </button>
+                <button class="nav-item" data-target="data-management-view">
+                    <i class="ph ph-database"></i> Base de Datos
+                </button>
+                <button class="nav-item" data-target="converter-view">
+                    <i class="ph ph-arrows-left-right"></i> Convertidor
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <p>Generado By Carwil</p>
+            </div>
+        </Sidebar>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="top-header">
+                <h1>Dashboard</h1>
+                <div class="header-actions">
+                    <div class="rate-card-premium" id="rateCard">
+                        <div class="rate-info-main">
+                            <div class="rate-label-group">
+                                <i class="ph ph-trend-up" id="rateTrendIcon"></i>
+                                <span>Tasa BCV</span>
+                            </div>
+                            <div class="rate-value-group">
+                                <span class="rate-symbol">$</span>
+                                <input type="number" id="exchangeRateInput" step="0.01" placeholder="0.00"
+                                    title="Editar tasa manualmente">
+                                <span class="rate-currency">Bs.</span>
+                            </div>
+                        </div>
+                        <div class="rate-graph-container">
+                            <svg id="rateSparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
+                                <path d="" fill="none" stroke="var(--accent-green)" stroke-width="2"
+                                    vector-effect="non-scaling-stroke"></path>
+                            </svg>
+                        </div>
+                        <button id="syncRateBtn" class="sync-btn-modern" title="Sincronizar con BCV">
+                            <i class="ph ph-arrows-clockwise"></i>
+                    </div>
+            </header>
+
+            <div class="content-area">
+
+                <!-- VIEW: Dashboard (Client List) -->
+                <section id="dashboard-view" class="view-section active">
+                    <div class="summary-cards">
+                        <div class="glass-card summary-card" onclick="app.switchView('clients-view')">
+                            <div class="card-icon"><i class="ph ph-users"></i></div>
+                            <div class="card-info">
+                                <p>Total Clientes</p>
+                                <h3 id="totalClientsCount">0</h3>
+                            </div>
+                        </div>
+                        <div class="glass-card summary-card highlight" onclick="app.switchView('clients-view')">
+                            <div class="card-icon"><i class="ph ph-currency-dollar"></i></div>
+                            <div class="card-info">
+                                <p>Cuentas por Cobrar Total</p>
+                                <h3 id="totalDebtAmount">$0.00</h3>
+                                <p class="text-sm currency-vef" id="totalDebtAmountVEF">Bs. 0,00</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <!-- Daily Payments Chart Card -->
+                        <div class="glass-card chart-card">
+                            <div class="card-header"
+                                style="display: flex; justify-content: space-between; align-items: center;">
+                                <h3>Pagos Recibidos</h3>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <select id="chartTimeRange" class="select-sm"
+                                        style="width: auto; padding: 0.25rem 2rem 0.25rem 0.75rem; font-size: 0.75rem;">
+                                        <option value="1">Hoy</option>
+                                        <option value="3">Últimos 3 días</option>
+                                        <option value="7">Últimos 7 días</option>
+                                        <option value="30">Último mes</option>
+                                    </select>
+                                    <div class="badge-status success">Actividad</div>
+                                </div>
+                            </div>
+                            <div class="chart-container-large">
+                                <canvas id="dailyPaymentsChart"></canvas>
+                                <div id="emptyChartState" class="empty-state hidden">
+                                    <i class="ph ph-chart-bar"></i>
+                                    <p>No se han registrado pagos hoy.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Daily Stats Card -->
+                        <div class="glass-card stats-mini-card">
+                            <div class="card-header">
+                                <h3 id="statsSummaryTitle">Resumen del Día</h3>
+                            </div>
+                            <div class="mini-stats-grid">
+                                <div class="mini-stat">
+                                    <span class="label" id="collectedLabel">Cobrado Hoy</span>
+                                    <h4 id="todayCollectedAmount">$0.00</h4>
+                                </div>
+                                <div class="mini-stat">
+                                    <span class="label" id="salesLabel">Ventas Hoy</span>
+                                    <h4 id="todaySalesAmount">$0.00</h4>
+                                </div>
+                                <div class="mini-stat warning" onclick="app.switchView('clients-view')"
+                                    style="cursor: pointer;">
+                                    <span class="label">Clientes Morosos</span>
+                                    <h4 id="moroseClientsCount">0</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </section>
+
+                <!-- VIEW: My Clients List -->
+                <section id="clients-view" class="view-section">
+                    <div class="glass-card table-card">
+                        <div class="card-header"
+                            style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <h3>Mis Clientes</h3>
+                            <div class="search-bar">
+                                <i class="ph ph-magnifying-glass"></i>
+                                <input type="text" id="globalSearchInput" placeholder="Buscar cliente...">
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Cliente</th>
+                                        <th>Contacto</th>
+                                        <th>Deuda</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="clientsTableBody">
+                                    <!-- Rows populated by JS -->
+                                </tbody>
+                            </table>
+                            <div id="emptyClientsState" class="empty-state hidden">
+                                <i class="ph ph-users-three"></i>
+                                <p>Aún no tienes clientes registrados.</p>
+                                <button class="btn btn-primary" onclick="app.switchView('add-client-view')">Crear
+                                    Cliente</button>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: Add/Edit Client -->
+                <section id="add-client-view" class="view-section">
+                    <div class="glass-card form-card">
+                        <div class="card-header">
+                            <h3 id="clientFormTitle">Registrar Nuevo Cliente</h3>
+                        </div>
+                        <form id="clientForm">
+                            <input type="hidden" id="clientId">
+                            <div class="form-group">
+                                <label for="clientName">Nombre / Empresa *</label>
+                                <input type="text" id="clientName" required placeholder="Ej. Juan Pérez">
+                            </div>
+                            <div class="form-group">
+                                <label for="clientCategory">Categoría</label>
+                                <select id="clientCategory">
+                                    <option value="" disabled selected>Seleccione una categoría</option>
+                                    <option value="Ambulatorio">Ambulatorio</option>
+                                    <option value="Gobernación">Gobernación</option>
+                                    <option value="Contraloria">Contraloria</option>
+                                    <option value="Libertad">Libertad</option>
+                                    <option value="Salud">Salud</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="clientPhone">Teléfono</label>
+                                    <input type="tel" id="clientPhone" placeholder="Ej. +1 234 567 8900">
+                                </div>
+                                <div class="form-group">
+                                    <label for="clientEmail">Email</label>
+                                    <input type="email" id="clientEmail" placeholder="Ej. juan@correo.com">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="clientAddress">Dirección</label>
+                                <input type="text" id="clientAddress" placeholder="Dirección del cliente">
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary"
+                                    onclick="app.switchView('clients-view')">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Guardar Cliente</button>
+                            </div>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- VIEW: Client Profile -->
+                <section id="client-profile-view" class="view-section">
+                    <button class="btn btn-text back-btn" onclick="app.switchView('clients-view')">
+                        <i class="ph ph-arrow-left"></i> Volver a Mis Clientes
+                    </button>
+
+                    <div class="profile-grid">
+                        <div class="glass-card profile-details">
+                            <div class="profile-header">
+                                <div class="avatar">
+                                    <span id="profileInitials">JP</span>
+                                </div>
+                                <div>
+                                    <div style="display: flex; align-items: center; gap: 10px;">
+                                        <h2 id="profileName">Juan Pérez</h2>
+                                        <button class="icon-btn-sm" id="editClientBtn" title="Editar Cliente"
+                                            onclick="app.prepareEditClient()">
+                                            <i class="ph ph-pencil-simple"></i>
+                                        </button>
+                                    </div>
+                                    <p class="text-sm" id="profileContactInfo">juan@correo.com | +1 234 567 8900</p>
+                                </div>
+                            </div>
+                            <div class="profile-stats">
+                                <div class="stat-box">
+                                    <p>Deuda Actual</p>
+                                    <h3 id="profileCurrentDebt" class="text-danger">$0.00</h3>
+                                    <p class="text-sm currency-vef" id="profileCurrentDebtVEF">Bs. 0,00</p>
+                                </div>
+                            </div>
+                            <div class="profile-actions">
+                                <button class="btn btn-danger-outline" onclick="app.openTransactionModal('SALE')">
+                                    <i class="ph ph-minus-circle"></i> Nueva Venta (Deuda)
+                                </button>
+                                <button class="btn btn-success" onclick="app.openTransactionModal('PAYMENT')">
+                                    <i class="ph ph-plus-circle"></i> Registrar Abono
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="glass-card profile-transactions">
+                            <div class="card-header">
+                                <h3>Historial de Transacciones</h3>
+                            </div>
+                            <div class="timeline" id="transactionsTimeline">
+                                <!-- Transactions injected here -->
+                            </div>
+                            <div id="emptyTransactionsState" class="empty-state hidden">
+                                <i class="ph ph-receipt"></i>
+                                <p>No hay transacciones registradas.</p>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: Data Management -->
+                <section id="data-management-view" class="view-section">
+                    <div class="glass-card form-card">
+                        <div class="card-header">
+                            <h3>Gestión de Archivos de Datos</h3>
+                            <p class="text-sm" style="color: var(--text-secondary); margin-top: 5px;">
+                                Como esta es una aplicación web, los datos se guardan en el navegador.
+                                Usa estas herramientas para guardar copias en tu carpeta local.
+                            </p>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 1.5rem; padding: 1rem 0;">
+                            <div class="data-action-card">
+                                <div>
+                                    <h4>Exportar Datos</h4>
+                                    <p class="text-sm px-top">Descarga un archivo .json para guardarlo en la carpeta
+                                        <strong>/data</strong>.
+                                    </p>
+                                </div>
+                                <button class="btn btn-primary" onclick="app.exportData()">
+                                    <i class="ph ph-download-simple"></i> Exportar JSON
+                                </button>
+                            </div>
+
+                            <div class="data-action-card">
+                                <div>
+                                    <h4>Importar Datos</h4>
+                                    <p class="text-sm px-top">Carga un archivo .json que tengas guardado.</p>
+                                </div>
+                                <label for="importFile" class="btn btn-secondary" style="margin-bottom: 0;">
+                                    <i class="ph ph-upload-simple"></i> Seleccionar Archivo
+                                </label>
+                                <input type="file" id="importFile" accept=".json" style="display: none;"
+                                    onchange="app.importData(event)">
+                            </div>
+                        </div>
+                        <div class="alert-info" style="margin-top: 1rem;">
+                            <i class="ph ph-info"></i>
+                            <p>Tus archivos se encuentran en:<br><code>.../distant-singularity/data/</code></p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: Currency Converter -->
+                <section id="converter-view" class="view-section">
+                    <div class="glass-card form-card">
+                        <div class="card-header">
+                            <h3>Convertidor de Divisas</h3>
+                            <p class="text-sm" id="converterRateDisplay">Tasa actual: 1$ = 0.00 Bs.</p>
+                        </div>
+
+                        <div class="converter-box">
+                            <div class="form-group">
+                                <label for="convUSD">Dólares ($)</label>
+                                <div class="input-with-icon">
+                                    <i class="ph ph-currency-dollar"></i>
+                                    <input type="number" id="convUSD" step="0.01" placeholder="0.00">
+                                </div>
+                            </div>
+
+                            <div class="converter-divider">
+                                <i class="ph ph-arrows-down"></i>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="convVEF">Bolívares (Bs.)</label>
+                                <div class="input-with-icon">
+                                    <i class="ph ph-coins"></i>
+                                    <input type="number" id="convVEF" step="0.01" placeholder="0.00">
+                                </div>
+                            </div>
+
+                            <button class="btn btn-secondary btn-full" onclick="app.resetConverter()">
+                                <i class="ph ph-arrow-counter-clockwise"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="transactionModal" class="modal-overlay hidden">
+        <div class="glass-card modal-content">
+            <div class="modal-header">
+                <h3 id="txModalTitle">Registrar Transacción</h3>
+                <button class="icon-btn close-modal"><i class="ph ph-x"></i></button>
+            </div>
+            <form id="transactionForm">
+                <input type="hidden" id="txType">
+                <div class="form-group">
+                    <label for="txAmount">Monto *</label>
+                    <div class="input-with-icon">
+                        <i class="ph ph-currency-dollar"></i>
+                        <input type="number" id="txAmount" step="0.01" min="0.01" required placeholder="0.00">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="txDescription">Descripción *</label>
+                    <input type="text" id="txDescription" required placeholder="Ej. Pago de factura #120">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary close-modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="txSubmitBtn">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <i class="ph ph-check-circle toast-icon"></i>
+        <span id="toastMessage">Operación exitosa</span>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
