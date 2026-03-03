@@ -154,25 +154,57 @@ class AccountsApp {
     }
 
     async handleAuthSubmit() {
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
+        const emailInput = document.getElementById('loginEmail');
+        const passwordInput = document.getElementById('loginPassword');
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
         const btn = document.getElementById('loginBtn');
 
+        if (!email || !password) {
+            this.showToast('Por favor completa todos los campos', 'error');
+            return;
+        }
+
         btn.disabled = true;
-        btn.innerHTML = '<i class="ph ph-circle-notch animate-spin"></i> Cargando...';
+        btn.innerHTML = '<i class="ph ph-circle-notch animate-spin"></i> Procesando...';
 
         try {
             if (this.isSignUp) {
-                const { data, error } = await this.supabase.auth.signUp({ email, password });
+                const { data, error } = await this.supabase.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        emailRedirectTo: window.location.origin
+                    }
+                });
+
                 if (error) throw error;
-                this.showToast('Cuenta creada. Por favor verifica tu correo.', 'info');
+
+                // Check if user was created but needs confirmation
+                if (data.user && !data.session) {
+                    this.showToast('¡Registro casi listo! Revisa tu correo (' + email + ') para confirmar tu cuenta.', 'info');
+                    // Reset form to login mode
+                    this.toggleAuthMode();
+                } else if (data.session) {
+                    this.handleAuthStateChange(data.user);
+                    this.showToast('¡Bienvenido!');
+                }
             } else {
                 const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
-                if (error) throw error;
+                if (error) {
+                    if (error.message.includes('Email not confirmed')) {
+                        throw new Error('Debes confirmar tu correo antes de entrar. Revisa tu bandeja de entrada o spam.');
+                    }
+                    throw error;
+                }
                 this.handleAuthStateChange(data.user);
+                this.showToast('Sesión iniciada');
             }
         } catch (error) {
-            this.showToast(error.message, 'error');
+            console.error("Auth Error:", error);
+            let msg = error.message;
+            if (msg === 'Invalid login credentials') msg = 'Correo o contraseña incorrectos';
+            this.showToast(msg, 'error');
         } finally {
             btn.disabled = false;
             btn.textContent = this.isSignUp ? 'Registrarse' : 'Entrar';
@@ -678,7 +710,11 @@ class AccountsApp {
         }
 
         filteredClients.forEach(client => {
-            const balance = this.getClientBalance(client.id);
+            // Stats from Supabase columns (or calculate if missing)
+            const totalSales = client.total_debt || 0;
+            const totalPayments = client.total_payments || 0;
+            const balance = totalSales - totalPayments;
+
             const isMorose = this.isClientMorose(client.id);
             const tr = document.createElement('tr');
 
@@ -699,6 +735,8 @@ class AccountsApp {
                         ${client.email ? `<i class="ph ph-envelope"></i> ${client.email}` : ''}
                     </div>
                 </td>
+                <td style="color:var(--text-secondary)">${this.formatCurrency(totalSales)}</td>
+                <td style="color:var(--accent-green)">${this.formatCurrency(totalPayments)}</td>
                 <td style="font-weight:600;">
                     <div style="color: ${balance > 0 ? 'var(--accent-red)' : 'var(--accent-green)'}">${this.formatCurrency(balance)}</div>
                     <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 400;">${this.formatVEF(balance)}</div>
