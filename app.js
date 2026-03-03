@@ -109,6 +109,7 @@ class AccountsApp {
     bindAuthEvents() {
         const loginForm = document.getElementById('loginForm');
         const toggleBtn = document.getElementById('toggleAuthBtn');
+        const passwordToggle = document.getElementById('togglePasswordVisibility');
 
         loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -116,6 +117,18 @@ class AccountsApp {
         });
 
         toggleBtn.addEventListener('click', () => this.toggleAuthMode());
+
+        passwordToggle.addEventListener('click', () => {
+            const pwdInput = document.getElementById('loginPassword');
+            const icon = passwordToggle.querySelector('i');
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                icon.className = 'ph ph-eye-slash';
+            } else {
+                pwdInput.type = 'password';
+                icon.className = 'ph ph-eye';
+            }
+        });
     }
 
     // --- Auth Logic ---
