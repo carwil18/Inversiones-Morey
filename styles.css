@@ -1000,3 +1000,80 @@ select.select-sm {
     width: 100%;
     margin-top: 1rem;
 }
+
+/* Auth Layout */
+.auth-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-primary);
+    background-image: radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15) 0%, transparent 50%), radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.auth-overlay.hidden {
+    display: none !important;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 2.5rem;
+    animation: authEntry 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes authEntry {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.auth-header i {
+    font-size: 3rem;
+    color: var(--accent-blue);
+    margin-bottom: 1rem;
+}
+
+.auth-header h2 {
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.auth-actions {
+    margin-top: 1.5rem;
+}
+
+.app-container.hidden {
+    display: none !important;
+}
+
+.logout-btn {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--accent-red) !important;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    width: 100%;
+    justify-content: center;
+}
+
+.logout-btn:hover {
+    opacity: 1;
+    background: rgba(239, 68, 68, 0.05) !important;
+}

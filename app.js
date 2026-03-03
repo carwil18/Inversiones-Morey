@@ -5,6 +5,8 @@ const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 class AccountsApp {
     constructor() {
         this.supabase = _supabase;
+        this.user = null;
+        this.isSignUp = false;
         this.clients = [];
         this.transactions = [];
         this.currentViewId = 'dashboard-view';
@@ -19,14 +21,19 @@ class AccountsApp {
     async init() {
         document.getElementById('exchangeRateInput').value = this.exchangeRate.toFixed(2);
         this.bindEvents();
-        await this.syncWithSupabase();
-        this.renderDashboard();
-        this.renderSparkline();
+        this.bindAuthEvents();
+
+        // Check for existing session
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (session) {
+            this.handleAuthStateChange(session.user);
+        }
+
         this.fetchBCVRate(); // Sync on load
     }
 
     bindEvents() {
-        // Navigation
+        // Main Navigation
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const targetId = e.currentTarget.dataset.target;
@@ -38,6 +45,9 @@ class AccountsApp {
         document.getElementById('globalSearchInput').addEventListener('input', (e) => {
             this.renderClientsTable(e.target.value);
         });
+
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', () => this.handleLogout());
 
         // Exchange Rate
         document.getElementById('exchangeRateInput').addEventListener('change', (e) => {
@@ -96,9 +106,89 @@ class AccountsApp {
         });
     }
 
+    bindAuthEvents() {
+        const loginForm = document.getElementById('loginForm');
+        const toggleBtn = document.getElementById('toggleAuthBtn');
+
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.handleAuthSubmit();
+        });
+
+        toggleBtn.addEventListener('click', () => this.toggleAuthMode());
+    }
+
+    // --- Auth Logic ---
+
+    toggleAuthMode() {
+        this.isSignUp = !this.isSignUp;
+        const title = document.querySelector('.auth-header h2');
+        const subtitle = document.getElementById('auth-subtitle');
+        const btn = document.getElementById('loginBtn');
+        const toggle = document.getElementById('toggleAuthBtn');
+
+        if (this.isSignUp) {
+            title.textContent = 'Crear Cuenta';
+            subtitle.textContent = 'Regístrate para comenzar a gestionar tus cuentas';
+            btn.textContent = 'Registrarse';
+            toggle.textContent = '¿Ya tienes cuenta? Inicia sesión';
+        } else {
+            title.textContent = 'Inversiones Morey';
+            subtitle.textContent = 'Inicia sesión para gestionar tus cobranzas';
+            btn.textContent = 'Entrar';
+            toggle.textContent = '¿No tienes cuenta? Regístrate';
+        }
+    }
+
+    async handleAuthSubmit() {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+        const btn = document.getElementById('loginBtn');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-circle-notch animate-spin"></i> Cargando...';
+
+        try {
+            if (this.isSignUp) {
+                const { data, error } = await this.supabase.auth.signUp({ email, password });
+                if (error) throw error;
+                this.showToast('Cuenta creada. Por favor verifica tu correo.', 'info');
+            } else {
+                const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
+                if (error) throw error;
+                this.handleAuthStateChange(data.user);
+            }
+        } catch (error) {
+            this.showToast(error.message, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = this.isSignUp ? 'Registrarse' : 'Entrar';
+        }
+    }
+
+    handleAuthStateChange(user) {
+        this.user = user;
+        if (user) {
+            document.getElementById('auth-overlay').classList.add('hidden');
+            document.getElementById('main-app').classList.remove('hidden');
+            this.saveData(); // Triggers sync
+        } else {
+            document.getElementById('auth-overlay').classList.remove('hidden');
+            document.getElementById('main-app').classList.add('hidden');
+        }
+    }
+
+    async handleLogout() {
+        await this.supabase.auth.signOut();
+        this.handleAuthStateChange(null);
+        this.showToast('Sesión cerrada');
+    }
+
     // --- State & Storage (Supabase) ---
 
     async syncWithSupabase() {
+        if (!this.user) return;
+
         // First check if migration is needed
         const localClients = JSON.parse(localStorage.getItem('ar_clients')) || [];
         const localTransactions = JSON.parse(localStorage.getItem('ar_transactions')) || [];
@@ -111,12 +201,19 @@ class AccountsApp {
             this.showToast('Datos localizados migrados a la nube');
         }
 
-        const { data: clients, error: cErr } = await this.supabase.from('clients').select('*');
-        const { data: transactions, error: tErr } = await this.supabase.from('transactions').select('*');
+        const { data: clients, error: cErr } = await this.supabase
+            .from('clients')
+            .select('*')
+            .eq('user_id', this.user.id);
+
+        const { data: transactions, error: tErr } = await this.supabase
+            .from('transactions')
+            .select('*')
+            .eq('user_id', this.user.id);
 
         if (!cErr) this.clients = clients.map(c => ({
             ...c,
-            id: c.local_id || c.id // Maintain compatibility if migrated
+            id: c.local_id || c.id
         }));
 
         if (!tErr) this.transactions = transactions.map(t => ({
@@ -126,15 +223,18 @@ class AccountsApp {
     }
 
     async migrateLocalToSupabase(clients, transactions) {
+        if (!this.user) return;
+
         for (const c of clients) {
-            const { data: newC, error } = await this.supabase.from('clients').upsert({
+            const { data: newC } = await this.supabase.from('clients').upsert({
                 name: c.name,
                 category: c.category,
                 phone: c.phone,
                 email: c.email,
                 address: c.address,
                 created_at: new Date(c.createdAt).toISOString(),
-                local_id: c.id
+                local_id: c.id,
+                user_id: this.user.id
             }).select().single();
 
             if (newC) {
@@ -146,7 +246,8 @@ class AccountsApp {
                         amount: t.amount,
                         description: t.description,
                         created_at: new Date(t.createdAt).toISOString(),
-                        local_id: t.id
+                        local_id: t.id,
+                        user_id: this.user.id
                     });
                 }
             }
@@ -613,31 +714,28 @@ class AccountsApp {
 
         if (idInput) {
             // Edit existing
-            // Find remote ID first
-            const localClient = this.clients.find(c => c.id === idInput);
-            const remoteId = localClient.remote_id || localClient.id; // Check both
-
             const { error } = await this.supabase.from('clients').update({
                 name, category, phone, email, address
-            }).filter('local_id', 'eq', idInput); // Better filter using local_id
+            }).eq('local_id', idInput).eq('user_id', this.user.id);
 
             if (error) {
-                // If local_id match fails, try UUID if it's a UUID
                 await this.supabase.from('clients').update({
                     name, category, phone, email, address
-                }).eq('id', idInput);
+                }).eq('id', idInput).eq('user_id', this.user.id);
             }
             this.showToast('Cliente actualizado');
         } else {
             // Create new
             const localId = this.getUniqueId();
             const { error } = await this.supabase.from('clients').insert({
-                name, category, phone, email, address, local_id: localId
+                name, category, phone, email, address,
+                local_id: localId,
+                user_id: this.user.id
             });
 
             if (error) {
                 console.error("Supabase Error:", error);
-                this.showToast('Error al registrar cliente', 'error');
+                this.showToast('Error al registrar cliente: ' + error.message, 'error');
                 return;
             }
             this.showToast('Cliente registrado con éxito');
@@ -771,7 +869,8 @@ class AccountsApp {
             type,
             amount,
             description,
-            local_id: this.getUniqueId()
+            local_id: this.getUniqueId(),
+            user_id: this.user.id
         });
 
         if (error) {
