@@ -104,6 +104,35 @@ class AccountsApp {
             e.preventDefault();
             this.handleTransactionSubmit();
         });
+
+        // Mobile Sidebar Toggle
+        const openSidebarBtn = document.getElementById('openSidebarBtn');
+        const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const sidebar = document.getElementById('sidebar');
+
+        const toggleSidebar = (forceClose = false) => {
+            if (forceClose) {
+                sidebar.classList.remove('active');
+                sidebarOverlay.classList.remove('active');
+            } else {
+                sidebar.classList.toggle('active');
+                sidebarOverlay.classList.toggle('active');
+            }
+        };
+
+        if (openSidebarBtn) openSidebarBtn.addEventListener('click', () => toggleSidebar());
+        if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', () => toggleSidebar(true));
+        if (sidebarOverlay) sidebarOverlay.addEventListener('click', () => toggleSidebar(true));
+
+        // Auto-close sidebar on mobile when navigating
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    toggleSidebar(true);
+                }
+            });
+        });
     }
 
     bindAuthEvents() {
@@ -238,33 +267,45 @@ class AccountsApp {
         const localClients = JSON.parse(localStorage.getItem('ar_clients')) || [];
         const localTransactions = JSON.parse(localStorage.getItem('ar_transactions')) || [];
 
-        if (localClients.length > 0) {
-            console.log("Migrating local data to Supabase...");
-            await this.migrateLocalToSupabase(localClients, localTransactions);
-            localStorage.removeItem('ar_clients');
-            localStorage.removeItem('ar_transactions');
-            this.showToast('Datos localizados migrados a la nube');
+        try {
+            const { data: rawClients, error: cErr } = await this.supabase
+                .from('clients')
+                .select('*')
+                .eq('user_id', this.user.id);
+
+            const { data: rawTransactions, error: tErr } = await this.supabase
+                .from('transactions')
+                .select('*')
+                .eq('user_id', this.user.id);
+
+            if (cErr) throw cErr;
+            if (tErr) throw tErr;
+
+            if (rawClients) {
+                this.clients = rawClients.map(c => ({
+                    ...c,
+                    id: String(c.local_id || c.id), // Use local_id for app logic routing
+                    uuid: String(c.id),           // Always keep DB UUID for matching
+                    // Normalize numeric fields strictly
+                    total_debt: parseFloat(c.total_debt || 0),
+                    total_payments: parseFloat(c.total_payments || 0),
+                    createdAt: new Date(c.created_at).getTime()
+                }));
+            }
+
+            if (rawTransactions) {
+                this.transactions = rawTransactions.map(t => ({
+                    ...t,
+                    id: String(t.local_id || t.id),
+                    clientId: String(t.client_id), // Link using strictly DB UUID
+                    amount: parseFloat(t.amount || 0),
+                    createdAt: new Date(t.created_at).getTime()
+                }));
+            }
+        } catch (err) {
+            console.error("Sync Error:", err);
+            this.showToast('Error al sincronizar con la nube', 'error');
         }
-
-        const { data: clients, error: cErr } = await this.supabase
-            .from('clients')
-            .select('*')
-            .eq('user_id', this.user.id);
-
-        const { data: transactions, error: tErr } = await this.supabase
-            .from('transactions')
-            .select('*')
-            .eq('user_id', this.user.id);
-
-        if (!cErr) this.clients = clients.map(c => ({
-            ...c,
-            id: c.local_id || c.id
-        }));
-
-        if (!tErr) this.transactions = transactions.map(t => ({
-            ...t,
-            id: t.local_id || t.id
-        }));
     }
 
     async migrateLocalToSupabase(clients, transactions) {
@@ -317,7 +358,20 @@ class AccountsApp {
     }
 
     getClientBalance(clientId) {
-        const txs = this.transactions.filter(t => t.clientId === clientId);
+        const client = this.getClient(clientId);
+        if (!client) return 0;
+
+        const clientUuid = String(client.uuid).toLowerCase();
+        const txs = (this.transactions || []).filter(t =>
+            String(t.clientId).toLowerCase() === clientUuid
+        );
+
+        // Use pre-calculated totals from client object if no transactions are found
+        // or if the sum differs (prioritize pre-calculated for parity with table)
+        if (txs.length === 0) {
+            return client.total_debt - client.total_payments;
+        }
+
         return txs.reduce((acc, tx) => {
             if (tx.type === 'SALE') return acc + tx.amount;
             if (tx.type === 'PAYMENT') return acc - tx.amount;
@@ -505,16 +559,30 @@ class AccountsApp {
             this.currentViewId = viewId;
         }
 
-        // Specific actions on open
+        // Header and Specific actions
+        const topHeaderTitle = document.querySelector('.top-header h1');
+
         if (viewId === 'dashboard-view') {
+            topHeaderTitle.textContent = 'Dashboard';
             this.renderDashboard();
         } else if (viewId === 'clients-view') {
+            topHeaderTitle.textContent = 'Mis Clientes';
             document.getElementById('globalSearchInput').value = '';
             this.renderClientsTable('');
         } else if (viewId === 'add-client-view') {
+            topHeaderTitle.textContent = this.currentClientId ? 'Editar Cliente' : 'Nuevo Cliente';
             this.resetClientForm();
+        } else if (viewId === 'client-profile-view') {
+            const client = this.getClient(this.currentClientId); // Fetch client first
+            topHeaderTitle.textContent = client ? client.name : 'Perfil de Cliente';
+        } else if (viewId === 'transactions-view') {
+            topHeaderTitle.textContent = 'Historial de Transacciones';
+            this.renderGlobalTransactions();
         } else if (viewId === 'converter-view') {
+            topHeaderTitle.textContent = 'Convertidor';
             document.getElementById('converterRateDisplay').textContent = `Tasa actual: 1$ = ${this.exchangeRate.toFixed(2)} Bs.`;
+        } else if (viewId === 'data-management-view') {
+            topHeaderTitle.textContent = 'Base de Datos';
         }
     }
 
@@ -710,10 +778,9 @@ class AccountsApp {
         }
 
         filteredClients.forEach(client => {
-            // Stats from Supabase columns (or calculate if missing)
-            const totalSales = client.total_debt || 0;
-            const totalPayments = client.total_payments || 0;
-            const balance = totalSales - totalPayments;
+            const balance = this.getClientBalance(client.id);
+            const totalSales = client.total_debt;
+            const totalPayments = client.total_payments;
 
             const isMorose = this.isClientMorose(client.id);
             const tr = document.createElement('tr');
@@ -854,8 +921,9 @@ class AccountsApp {
         const emptyState = document.getElementById('emptyTransactionsState');
         timeline.innerHTML = '';
 
-        const clientTxs = this.transactions
-            .filter(t => t.clientId === id)
+        const clientUuid = String(client.uuid).toLowerCase();
+        const clientTxs = (this.transactions || [])
+            .filter(t => String(t.clientId).toLowerCase() === clientUuid)
             .sort((a, b) => b.createdAt - a.createdAt);
 
         if (clientTxs.length === 0) {
@@ -869,11 +937,46 @@ class AccountsApp {
 
                 el.innerHTML = `
                     <div class="tx-info">
-                        <h4>${tx.description}</h4>
+                        <h4>${tx.description || (isSale ? 'Venta' : 'Abono')}</h4>
                         <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'}</span>
                     </div>
                     <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
-                        <div>${isSale ? '-' : '+'}${this.formatCurrency(tx.amount)}</div>
+                        <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
+                    </div>
+                `;
+                timeline.appendChild(el);
+            });
+        }
+    }
+
+    renderGlobalTransactions() {
+        const timeline = document.getElementById('globalTransactionsTimeline');
+        const emptyState = document.getElementById('emptyGlobalTransactionsState');
+        timeline.innerHTML = '';
+
+        const allTxs = [...(this.transactions || [])].sort((a, b) => b.createdAt - a.createdAt);
+
+        if (allTxs.length === 0) {
+            emptyState.classList.remove('hidden');
+        } else {
+            emptyState.classList.add('hidden');
+            allTxs.forEach(tx => {
+                const clientUuid = String(tx.clientId).toLowerCase();
+                const client = this.clients.find(c => String(c.uuid).toLowerCase() === clientUuid || String(c.id).toLowerCase() === clientUuid);
+                const clientName = client ? client.name : 'Cliente Eliminado/Desconocido';
+
+                const isSale = tx.type === 'SALE';
+                const el = document.createElement('div');
+                el.className = `tx-item ${isSale ? 'sale' : 'payment'}`;
+
+                el.innerHTML = `
+                    <div class="tx-info">
+                        <h4>${tx.description || (isSale ? 'Venta' : 'Abono')}</h4>
+                        <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'} • <strong>${clientName}</strong></span>
+                    </div>
+                    <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
+                        <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
                     </div>
                 `;
@@ -909,11 +1012,13 @@ class AccountsApp {
 
         if (!amount || amount <= 0 || !description.trim()) return;
 
-        // Get the remote UUID for the client
-        const localClient = this.clients.find(c => c.id === this.currentClientId);
-        // Find by local_id in Supabase
-        const { data: clients } = await this.supabase.from('clients').select('id').eq('local_id', this.currentClientId);
-        let remoteClientId = clients && clients[0] ? clients[0].id : this.currentClientId;
+        const dbClient = this.clients.find(c => c.id === this.currentClientId);
+        if (!dbClient) {
+            this.showToast('Error: Cliente no encontrado', 'error');
+            return;
+        }
+
+        const remoteClientId = dbClient.uuid;
 
         const { error } = await this.supabase.from('transactions').insert({
             client_id: remoteClientId,

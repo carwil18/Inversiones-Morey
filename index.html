@@ -61,9 +61,19 @@
     </div>
 
     <div class="app-container hidden" id="main-app">
+        <!-- Sidebar Overlay (for mobile) -->
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
         <!-- Sidebar Navigation -->
-        <Sidebar class="sidebar">
-            <div class="sidebar-header">
+        <Sidebar class="sidebar" id="sidebar">
+            <div class="sidebar-mobile-header">
+                <i class="ph ph-wallet"></i>
+                <h2>Inversiones Morey</h2>
+                <button class="btn-icon-close" id="closeSidebarBtn">
+                    <i class="ph ph-x"></i>
+                </button>
+            </div>
+            <div class="sidebar-header hide-mobile">
                 <i class="ph ph-wallet"></i>
                 <h2>Inversiones Morey</h2>
             </div>
@@ -80,6 +90,9 @@
                 <button class="nav-item" data-target="data-management-view">
                     <i class="ph ph-database"></i> Base de Datos
                 </button>
+                <button class="nav-item" data-target="transactions-view">
+                    <i class="ph ph-receipt"></i> Historial
+                </button>
                 <button class="nav-item" data-target="converter-view">
                     <i class="ph ph-arrows-left-right"></i> Convertidor
                 </button>
@@ -95,7 +108,12 @@
         <!-- Main Content -->
         <main class="main-content">
             <header class="top-header">
-                <h1>Dashboard</h1>
+                <div class="header-left">
+                    <button class="btn-icon-menu" id="openSidebarBtn">
+                        <i class="ph ph-list"></i>
+                    </button>
+                    <h1>Dashboard</h1>
+                </div>
                 <div class="header-actions">
                     <div class="rate-card-premium" id="rateCard">
                         <div class="rate-info-main">
@@ -110,7 +128,7 @@
                                 <span class="rate-currency">Bs.</span>
                             </div>
                         </div>
-                        <div class="rate-graph-container">
+                        <div class="rate-graph-container hide-mobile">
                             <svg id="rateSparkline" viewBox="0 0 100 30" preserveAspectRatio="none">
                                 <path d="" fill="none" stroke="var(--accent-green)" stroke-width="2"
                                     vector-effect="non-scaling-stroke"></path>
@@ -118,7 +136,9 @@
                         </div>
                         <button id="syncRateBtn" class="sync-btn-modern" title="Sincronizar con BCV">
                             <i class="ph ph-arrows-clockwise"></i>
+                        </button>
                     </div>
+                </div>
             </header>
 
             <div class="content-area">
@@ -328,6 +348,23 @@
                                 <i class="ph ph-receipt"></i>
                                 <p>No hay transacciones registradas.</p>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: Global Transactions -->
+                <section id="transactions-view" class="view-section">
+                    <div class="glass-card table-card">
+                        <div class="card-header"
+                            style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                            <h3>Historial Global de Transacciones</h3>
+                        </div>
+                        <div class="timeline" id="globalTransactionsTimeline">
+                            <!-- Transactions injected here -->
+                        </div>
+                        <div id="emptyGlobalTransactionsState" class="empty-state hidden">
+                            <i class="ph ph-receipt"></i>
+                            <p>No hay transacciones registradas en el sistema.</p>
                         </div>
                     </div>
                 </section>
