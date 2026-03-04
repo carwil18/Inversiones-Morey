@@ -95,6 +95,14 @@ class AccountsApp {
             this.renderDailyChart();
         });
 
+        // Global Transactions filters
+        document.getElementById('txFilterType').addEventListener('change', () => {
+            this.renderGlobalTransactions();
+        });
+        document.getElementById('txFilterDate').addEventListener('change', () => {
+            this.renderGlobalTransactions();
+        });
+
         // Transaction Modal
         document.querySelectorAll('.close-modal').forEach(btn => {
             btn.addEventListener('click', () => this.closeTransactionModal());
@@ -978,9 +986,14 @@ class AccountsApp {
                         <h4>${tx.description || (isSale ? 'Venta' : 'Abono')}</h4>
                         <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'}</span>
                     </div>
-                    <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
-                        <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
+                            <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
+                        </div>
+                        <button class="icon-btn-sm" onclick="app.generatePDF('${tx.id}')" title="Descargar Recibo">
+                            <i class="ph ph-download-simple"></i>
+                        </button>
                     </div>
                 `;
                 timeline.appendChild(el);
@@ -993,7 +1006,31 @@ class AccountsApp {
         const emptyState = document.getElementById('emptyGlobalTransactionsState');
         timeline.innerHTML = '';
 
-        const allTxs = [...(this.transactions || [])].sort((a, b) => b.createdAt - a.createdAt);
+        const typeFilter = document.getElementById('txFilterType').value;
+        const dateFilter = document.getElementById('txFilterDate').value;
+        const now = new Date();
+
+        let allTxs = [...(this.transactions || [])];
+
+        // Apply Type Filter
+        if (typeFilter !== 'ALL') {
+            allTxs = allTxs.filter(t => t.type === typeFilter);
+        }
+
+        // Apply Date Filter
+        if (dateFilter !== 'ALL') {
+            let limitTimestamp = 0;
+            if (dateFilter === 'TODAY') {
+                limitTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            } else if (dateFilter === 'WEEK') {
+                limitTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).getTime();
+            } else if (dateFilter === 'MONTH') {
+                limitTimestamp = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            }
+            allTxs = allTxs.filter(t => t.createdAt >= limitTimestamp);
+        }
+
+        allTxs.sort((a, b) => b.createdAt - a.createdAt);
 
         if (allTxs.length === 0) {
             emptyState.classList.remove('hidden');
@@ -1013,9 +1050,14 @@ class AccountsApp {
                         <h4>${tx.description || (isSale ? 'Venta' : 'Abono')}</h4>
                         <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'} • <strong>${clientName}</strong></span>
                     </div>
-                    <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
-                        <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
+                            <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
+                        </div>
+                        <button class="icon-btn-sm" onclick="app.generatePDF('${tx.id}')" title="Descargar Recibo">
+                            <i class="ph ph-download-simple"></i>
+                        </button>
                     </div>
                 `;
                 timeline.appendChild(el);
@@ -1076,6 +1118,119 @@ class AccountsApp {
         await this.saveData();
         this.closeTransactionModal();
         this.showToast(type === 'SALE' ? 'Venta registrada' : 'Abono registrado');
+    }
+
+    sendWhatsApp() {
+        const client = this.getClient(this.currentClientId);
+        if (!client) return;
+
+        const balance = this.getClientBalance(client.id);
+
+        // Remove non numeric chars except '+', just in case
+        let phone = client.phone ? client.phone.replace(/[^\d+]/g, '') : '';
+
+        if (!phone) {
+            this.showToast('El cliente no tiene un número registrado.', 'error');
+            return;
+        }
+
+        let msg = `Hola ${client.name},\n\nTe escribimos de *Inversiones Morey*.\n`;
+
+        if (balance > 0) {
+            msg += `Queremos recordarte gentilmente que tienes un saldo pendiente de *${this.formatCurrency(balance)}* (${this.formatVEF(balance)}).\n\nQuedamos atentos a tu abono. ¡Feliz día!`;
+        } else if (balance === 0) {
+            msg += `Solo pasábamos para saludarte y confirmar que tu saldo actual es de *${this.formatCurrency(0)}*.\n\n¡Gracias por preferirnos!`;
+        } else {
+            msg += `Tienes un saldo a favor con nosotros de *${this.formatCurrency(Math.abs(balance))}*.\n\n¡Gracias por tu confianza!`;
+        }
+
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank');
+    }
+
+    generatePDF(txId) {
+        const tx = this.transactions.find(t => String(t.id) === String(txId) || String(t.local_id) === String(txId));
+        if (!tx) return;
+
+        const clientUuid = String(tx.clientId).toLowerCase();
+        const client = this.clients.find(c => String(c.uuid).toLowerCase() === clientUuid || String(c.id).toLowerCase() === clientUuid);
+        const clientName = client ? client.name : 'Cliente Desconocido';
+        const clientPhone = client ? client.phone || 'N/A' : 'N/A';
+        const clientAddress = client ? client.address || 'N/A' : 'N/A';
+
+        const isSale = tx.type === 'SALE';
+        const typeLabel = isSale ? 'Factura de Venta' : 'Recibo de Abono';
+
+        // Hidden element to compile PDF template
+        const printArea = document.createElement('div');
+        printArea.style.padding = '40px';
+        printArea.style.background = 'white';
+        printArea.style.color = 'black';
+        printArea.style.fontFamily = 'Inter, sans-serif';
+        printArea.style.width = '800px';
+
+        printArea.innerHTML = `
+            <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between;">
+                <div>
+                    <h1 style="color: #0f172a; margin: 0; font-size: 24px;">INVERSIONES MOREY</h1>
+                    <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Gestión de Cobranzas y Ventas</p>
+                </div>
+                <div style="text-align: right;">
+                    <h2 style="color: ${isSale ? '#ef4444' : '#10b981'}; margin: 0; font-size: 20px;">${typeLabel}</h2>
+                    <p style="color: #64748b; margin: 5px 0 0 0; font-size: 14px;">Fecha: ${new Date(tx.createdAt).toLocaleDateString('es-VE')}</p>
+                </div>
+            </div>
+            
+            <div style="display: flex; margin-bottom: 30px;">
+                <div style="flex: 1;">
+                    <h3 style="color: #0f172a; font-size: 16px; margin: 0 0 10px 0;">Datos del Cliente</h3>
+                    <p style="margin: 0; font-size: 14px; color: #334155;"><strong>Nombre:</strong> ${clientName}</p>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #334155;"><strong>Teléfono:</strong> ${clientPhone}</p>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #334155;"><strong>Dirección:</strong> ${clientAddress}</p>
+                </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                <thead>
+                    <tr style="background-color: #f1f5f9;">
+                        <th style="padding: 12px; text-align: left; color: #0f172a; border-bottom: 1px solid #cbd5e1;">Descripción</th>
+                        <th style="padding: 12px; text-align: right; color: #0f172a; border-bottom: 1px solid #cbd5e1;">Monto (USD)</th>
+                        <th style="padding: 12px; text-align: right; color: #0f172a; border-bottom: 1px solid #cbd5e1;">Eq. Bolívares</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">${tx.description || (isSale ? 'Venta general' : 'Abono general')}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e2e8f0; color: #334155; font-weight: bold;">${this.formatCurrency(tx.amount)}</td>
+                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e2e8f0; color: #334155;">${this.formatVEF(tx.amount)}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="margin-top: 50px; text-align: center; color: #64748b; font-size: 12px;">
+                <p>Generado por Inversiones Morey - Tasa referencial BCV: ${this.exchangeRate.toFixed(2)} Bs.</p>
+                <p>Este documento es un comprobante de control interno.</p>
+            </div>
+        `;
+
+        document.body.appendChild(printArea);
+
+        const opt = {
+            margin: 0.5,
+            filename: `${isSale ? 'Venta' : 'Abono'}_${clientName.replace(/\s+/g, '_')}_${new Date(tx.createdAt).toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+
+        html2pdf().from(printArea).set(opt).save().then(() => {
+            document.body.removeChild(printArea);
+            this.showToast('Recibo PDF generado con éxito');
+        }).catch(err => {
+            console.error("PDF Error: ", err);
+            document.body.removeChild(printArea);
+            this.showToast('Error al generar PDF', 'error');
+        });
     }
 }
 

@@ -15,6 +15,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- html2pdf -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <link rel="stylesheet" href="styles.css">
     <!-- Favicon & Icons -->
     <link rel="icon" type="image/png" href="icon.png">
@@ -320,6 +322,11 @@
                                             onclick="app.deleteCurrentClient()" style="color: var(--accent-red);">
                                             <i class="ph ph-trash"></i>
                                         </button>
+                                        <button class="icon-btn-sm" id="whatsappClientBtn" title="Enviar WhatsApp"
+                                            onclick="app.sendWhatsApp()"
+                                            style="color: #25D366; background: rgba(37, 211, 102, 0.1);">
+                                            <i class="ph ph-whatsapp-logo"></i>
+                                        </button>
                                     </div>
                                     <p class="text-sm" id="profileContactInfo">juan@correo.com | +1 234 567 8900</p>
                                 </div>
@@ -362,6 +369,19 @@
                         <div class="card-header"
                             style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
                             <h3>Historial Global de Transacciones</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <select id="txFilterType" class="select-sm" style="width: auto;">
+                                    <option value="ALL">Todas las transacciones</option>
+                                    <option value="SALE">Solo Ventas (Deuda)</option>
+                                    <option value="PAYMENT">Solo Abonos</option>
+                                </select>
+                                <select id="txFilterDate" class="select-sm" style="width: auto;">
+                                    <option value="ALL">Todo el tiempo</option>
+                                    <option value="TODAY">Hoy</option>
+                                    <option value="WEEK">Últimos 7 días</option>
+                                    <option value="MONTH">Este mes</option>
+                                </select>
+                            </div>
                         </div>
                         <div class="timeline" id="globalTransactionsTimeline">
                             <!-- Transactions injected here -->
