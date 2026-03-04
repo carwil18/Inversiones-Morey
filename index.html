@@ -222,6 +222,16 @@
                                     <h4 id="moroseClientsCount">0</h4>
                                 </div>
                             </div>
+
+                            <div class="card-header"
+                                style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; padding-bottom: 0;">
+                                <h3 style="font-size: 0.9rem; color: var(--text-secondary);">Desglose por Método de Pago
+                                </h3>
+                            </div>
+                            <div id="paymentMethodsBreakdown"
+                                style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                                <!-- Payment methods injected here -->
+                            </div>
                         </div>
                     </div>
 
@@ -429,6 +439,16 @@
 
                             <div class="data-action-card">
                                 <div>
+                                    <h4>Exportar a Excel (CSV)</h4>
+                                    <p class="text-sm px-top">Descarga un listado de tus clientes y sus saldos.</p>
+                                </div>
+                                <button class="btn btn-success" onclick="app.exportToCSV()">
+                                    <i class="ph ph-file-csv"></i> Exportar CSV
+                                </button>
+                            </div>
+
+                            <div class="data-action-card">
+                                <div>
                                     <h4>Importar Datos</h4>
                                     <p class="text-sm px-top">Carga un archivo .json que tengas guardado.</p>
                                 </div>
@@ -495,16 +515,35 @@
             </div>
             <form id="transactionForm">
                 <input type="hidden" id="txType">
-                <div class="form-group">
-                    <label for="txAmount">Monto *</label>
-                    <div class="input-with-icon">
-                        <i class="ph ph-currency-dollar"></i>
-                        <input type="number" id="txAmount" step="0.01" min="0.01" required placeholder="0.00">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="txAmount">Monto *</label>
+                        <div class="input-with-icon">
+                            <i class="ph ph-currency-dollar"></i>
+                            <input type="number" id="txAmount" step="0.01" min="0.01" required placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="form-group" id="txPaymentMethodGroup">
+                        <label for="txPaymentMethod">Método de Pago</label>
+                        <select id="txPaymentMethod">
+                            <option value="Efectivo ($)">Efectivo ($)</option>
+                            <option value="Efectivo (Bs)">Efectivo (Bs)</option>
+                            <option value="Zelle">Zelle</option>
+                            <option value="Pago Móvil">Pago Móvil</option>
+                            <option value="Transferencia">Transferencia</option>
+                            <option value="Otro">Otro</option>
+                        </select>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="txDescription">Descripción *</label>
-                    <input type="text" id="txDescription" required placeholder="Ej. Pago de factura #120">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="txDescription">Descripción *</label>
+                        <input type="text" id="txDescription" required placeholder="Ej. Pago de factura #120">
+                    </div>
+                    <div class="form-group">
+                        <label for="txDate">Fecha de Transacción *</label>
+                        <input type="datetime-local" id="txDate" required>
+                    </div>
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary close-modal">Cancelar</button>

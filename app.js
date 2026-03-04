@@ -664,6 +664,31 @@ class AccountsApp {
         document.getElementById('todayCollectedAmount').textContent = this.formatCurrency(filteredPayments.reduce((acc, t) => acc + t.amount, 0));
         document.getElementById('todaySalesAmount').textContent = this.formatCurrency(filteredSales.reduce((acc, t) => acc + t.amount, 0));
 
+        // Payment Methods Breakdown
+        const pmBreakdownEl = document.getElementById('paymentMethodsBreakdown');
+        pmBreakdownEl.innerHTML = '';
+
+        let paymentBreakdown = {};
+        for (let tx of filteredPayments) {
+            let method = tx.payment_method || 'No Especificado';
+            if (!paymentBreakdown[method]) paymentBreakdown[method] = 0;
+            paymentBreakdown[method] += tx.amount;
+        }
+
+        const methodsSorted = Object.entries(paymentBreakdown).sort((a, b) => b[1] - a[1]);
+        if (methodsSorted.length === 0) {
+            pmBreakdownEl.innerHTML = '<p class="text-sm" style="color:var(--text-muted);">Sin abonos en este periodo.</p>';
+        } else {
+            for (let [method, amount] of methodsSorted) {
+                pmBreakdownEl.innerHTML += `
+                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0;">
+                         <span style="font-size: 0.85rem; color: var(--text-primary);"><i class="ph ph-wallet"></i> ${method}</span>
+                         <span style="font-weight: 500; font-size: 0.85rem; color: var(--accent-green);">${this.formatCurrency(amount)}</span>
+                     </div>
+                 `;
+            }
+        }
+
         // Morose count
         const moroseCount = this.clients.filter(c => this.isClientMorose(c.id)).length;
         document.getElementById('moroseClientsCount').textContent = moroseCount;
@@ -1083,6 +1108,22 @@ class AccountsApp {
         document.getElementById('txModalTitle').textContent = title;
         document.getElementById('transactionForm').reset();
 
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        document.getElementById('txDate').value = `${year}-${month}-${day}T${hours}:${minutes}`;
+
+        // Payment Method toggle
+        const pmGroup = document.getElementById('txPaymentMethodGroup');
+        if (type === 'SALE') {
+            pmGroup.style.display = 'none';
+        } else {
+            pmGroup.style.display = 'block';
+        }
+
         const modal = document.getElementById('transactionModal');
         modal.classList.remove('hidden');
         // Let reflow happen for animation
@@ -1099,6 +1140,9 @@ class AccountsApp {
         const type = document.getElementById('txType').value;
         const amount = parseFloat(document.getElementById('txAmount').value);
         const description = document.getElementById('txDescription').value;
+        const formDateVal = document.getElementById('txDate').value;
+        const txDate = formDateVal ? new Date(formDateVal) : new Date();
+        const paymentMethod = type === 'SALE' ? null : document.getElementById('txPaymentMethod').value;
 
         if (!amount || amount <= 0 || !description.trim()) return;
 
@@ -1115,6 +1159,8 @@ class AccountsApp {
             type,
             amount,
             description,
+            payment_method: paymentMethod,
+            created_at: txDate.toISOString(),
             local_id: this.getUniqueId(),
             user_id: this.user.id
         });
