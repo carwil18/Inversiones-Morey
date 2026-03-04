@@ -888,6 +888,44 @@ class AccountsApp {
         document.getElementById('clientFormTitle').textContent = 'Editar Cliente: ' + client.name;
     }
 
+    async deleteCurrentClient() {
+        const client = this.getClient(this.currentClientId);
+        if (!client) return;
+
+        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente a "${client.name}" y todo su historial de transacciones? Esta acción no se puede deshacer.`)) {
+            return;
+        }
+
+        try {
+            const dbUuid = client.uuid;
+
+            // Delete all associated transactions first
+            const { error: txError } = await this.supabase.from('transactions')
+                .delete()
+                .eq('client_id', dbUuid)
+                .eq('user_id', this.user.id);
+
+            if (txError) throw txError;
+
+            // Delete the client
+            const { error: clientError } = await this.supabase.from('clients')
+                .delete()
+                .eq('id', dbUuid)
+                .eq('user_id', this.user.id);
+
+            if (clientError) throw clientError;
+
+            this.showToast('Cliente y su historial eliminados', 'success');
+
+            await this.saveData();
+            this.switchView('clients-view');
+
+        } catch (error) {
+            console.error("Delete Error:", error);
+            this.showToast('Error al eliminar cliente', 'error');
+        }
+    }
+
     viewClientProfile(id) {
         this.currentClientId = id;
         this.renderClientProfile(id);
