@@ -1289,6 +1289,55 @@ class AccountsApp {
             this.showToast('Error al generar PDF', 'error');
         });
     }
+
+    exportToCSV() {
+        if (!this.clients || this.clients.length === 0) {
+            this.showToast('No hay clientes para exportar', 'warning');
+            return;
+        }
+
+        // CSV Header
+        const headers = ['Nombre', 'Teléfono', 'Categoría', 'Ventas Acumuladas ($)', 'Abonos Acumulados ($)', 'Saldo Pendiente ($)'];
+        let csvContent = headers.join(',') + '\n';
+
+        // CSV Rows
+        this.clients.forEach(client => {
+            const balance = this.getClientBalance(client.id);
+            const totalSales = client.total_debt;
+            const totalPayments = totalSales - balance;
+
+            // Escape fields for CSV if they use commas
+            const name = `"${client.name.replace(/"/g, '""')}"`;
+            const phone = `"${(client.phone || '').replace(/"/g, '""')}"`;
+            const category = `"${(client.category || '').replace(/"/g, '""')}"`;
+
+            const row = [
+                name,
+                phone,
+                category,
+                totalSales.toFixed(2),
+                totalPayments.toFixed(2),
+                balance.toFixed(2)
+            ];
+
+            csvContent += row.join(',') + '\n';
+        });
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('url');
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement('a');
+        a.setAttribute('href', url);
+        a.setAttribute('download', `Clientes_Morey_${new Date().toISOString().split('T')[0]}.csv`);
+        a.style.visibility = 'hidden';
+        document.body.appendChild(a);
+
+        a.click();
+
+        document.body.removeChild(a);
+        this.showToast('Archivo CSV exportado con éxito');
+    }
 }
 
 // Initialize App
