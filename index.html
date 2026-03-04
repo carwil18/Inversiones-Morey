@@ -158,9 +158,20 @@
                         <div class="glass-card summary-card highlight" onclick="app.switchView('clients-view')">
                             <div class="card-icon"><i class="ph ph-currency-dollar"></i></div>
                             <div class="card-info">
-                                <p>Cuentas por Cobrar Total</p>
+                                <p>Por Cobrar Global</p>
                                 <h3 id="totalDebtAmount">$0.00</h3>
                                 <p class="text-sm currency-vef" id="totalDebtAmountVEF">Bs. 0,00</p>
+                            </div>
+                        </div>
+                        <div class="glass-card summary-card highlight"
+                            style="border-left: 4px solid var(--accent-green);">
+                            <div class="card-icon"
+                                style="background: rgba(16, 185, 129, 0.1); color: var(--accent-green);"><i
+                                    class="ph ph-wallet"></i></div>
+                            <div class="card-info">
+                                <p>Cobrado Este Mes</p>
+                                <h3 id="totalMonthCollected">$0.00</h3>
+                                <p class="text-sm currency-vef" id="totalMonthCollectedVEF">Bs. 0,00</p>
                             </div>
                         </div>
                     </div>

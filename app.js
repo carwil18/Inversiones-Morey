@@ -625,6 +625,16 @@ class AccountsApp {
         document.getElementById('totalDebtAmount').textContent = this.formatCurrency(totalSystemDebt);
         document.getElementById('totalDebtAmountVEF').textContent = this.formatVEF(totalSystemDebt);
 
+        // This Month's collected amount
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        const monthPayments = this.transactions
+            .filter(t => t.type === 'PAYMENT' && t.createdAt >= startOfMonth)
+            .reduce((acc, t) => acc + t.amount, 0);
+
+        document.getElementById('totalMonthCollected').textContent = this.formatCurrency(monthPayments);
+        document.getElementById('totalMonthCollectedVEF').textContent = this.formatVEF(monthPayments);
+
         this.renderDailyChart();
     }
 
