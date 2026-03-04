@@ -1167,7 +1167,8 @@ class AccountsApp {
         printArea.style.background = 'white';
         printArea.style.color = 'black';
         printArea.style.fontFamily = 'Inter, sans-serif';
-        printArea.style.width = '800px';
+        printArea.style.width = '100%';
+        printArea.style.maxWidth = '700px';
 
         printArea.innerHTML = `
             <div style="border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between;">
@@ -1216,11 +1217,11 @@ class AccountsApp {
         document.body.appendChild(printArea);
 
         const opt = {
-            margin: 0.5,
+            margin: 0.3,
             filename: `${isSale ? 'Venta' : 'Abono'}_${clientName.replace(/\s+/g, '_')}_${new Date(tx.createdAt).toISOString().split('T')[0]}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: { scale: 2 },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
         };
 
         html2pdf().from(printArea).set(opt).save().then(() => {
