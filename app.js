@@ -1215,7 +1215,7 @@ class AccountsApp {
         const clientAddress = client ? client.address || 'N/A' : 'N/A';
 
         const isSale = tx.type === 'SALE';
-        const typeLabel = isSale ? 'Factura de Venta' : 'Recibo de Abono';
+        const typeLabel = isSale ? 'Recibo de Venta' : 'Recibo de Abono';
 
         // Hidden element to compile PDF template
         const printArea = document.createElement('div');
