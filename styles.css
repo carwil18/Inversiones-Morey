@@ -304,6 +304,60 @@ body {
     border-color: var(--accent-blue);
 }
 
+/* Currency Switches */
+.rate-currency-switch {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 2px;
+    border-radius: 6px;
+}
+
+.rate-currency-switch button {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.rate-currency-switch button.active {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.converter-currency-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 1.5rem;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 4px;
+    border-radius: var(--radius-md);
+}
+
+.converter-currency-tabs button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.5rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.converter-currency-tabs button.active {
+    background: var(--accent-blue);
+    color: white;
+}
+
 .sync-btn-modern.loading i {
     animation: rotate 1s linear infinite;
 }

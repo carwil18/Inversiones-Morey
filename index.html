@@ -118,13 +118,17 @@
                 </div>
                 <div class="header-actions">
                     <div class="rate-card-premium" id="rateCard">
+                        <div class="rate-currency-switch" id="headerCurrencySwitch">
+                            <button class="active" data-curr="USD">$</button>
+                            <button data-curr="EUR">€</button>
+                        </div>
                         <div class="rate-info-main">
                             <div class="rate-label-group">
                                 <i class="ph ph-trend-up" id="rateTrendIcon"></i>
-                                <span>Tasa BCV</span>
+                                <span id="rateLabel">Tasa BCV ($)</span>
                             </div>
                             <div class="rate-value-group">
-                                <span class="rate-symbol">$</span>
+                                <span class="rate-symbol" id="headerRateSymbol">$</span>
                                 <input type="number" id="exchangeRateInput" step="0.01" placeholder="0.00"
                                     title="Editar tasa manualmente">
                                 <span class="rate-currency">Bs.</span>
@@ -156,7 +160,7 @@
                             </div>
                         </div>
                         <div class="glass-card summary-card highlight" onclick="app.switchView('clients-view')">
-                            <div class="card-icon"><i class="ph ph-currency-dollar"></i></div>
+                            <div class="card-icon"><i class="ph ph-currency-dollar" id="debtCardIcon"></i></div>
                             <div class="card-info">
                                 <p>Por Cobrar Global</p>
                                 <h3 id="totalDebtAmount">$0.00</h3>
@@ -475,10 +479,14 @@
                         </div>
 
                         <div class="converter-box">
+                            <div class="converter-currency-tabs" id="converterCurrencyTabs">
+                                <button class="active" data-mode="USD">Dólares ($)</button>
+                                <button data-mode="EUR">Euros (€)</button>
+                            </div>
                             <div class="form-group">
-                                <label for="convUSD">Dólares ($)</label>
+                                <label for="convUSD" id="convInputLabel">Dólares ($)</label>
                                 <div class="input-with-icon">
-                                    <i class="ph ph-currency-dollar"></i>
+                                    <i class="ph ph-currency-dollar" id="convInputIcon"></i>
                                     <input type="number" id="convUSD" step="0.01" placeholder="0.00">
                                 </div>
                             </div>
@@ -519,7 +527,7 @@
                     <div class="form-group">
                         <label for="txAmount">Monto *</label>
                         <div class="input-with-icon">
-                            <i class="ph ph-currency-dollar"></i>
+                            <i class="ph ph-currency-dollar" id="txAmountIcon"></i>
                             <input type="number" id="txAmount" step="0.01" min="0.01" required placeholder="0.00">
                         </div>
                     </div>

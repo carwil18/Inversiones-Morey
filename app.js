@@ -12,6 +12,9 @@ class AccountsApp {
         this.currentViewId = 'dashboard-view';
         this.currentClientId = null;
         this.exchangeRate = parseFloat(localStorage.getItem('ar_exchange_rate')) || 1;
+        this.exchangeRateEUR = parseFloat(localStorage.getItem('ar_exchange_rate_eur')) || 1;
+        this.activeCurrency = localStorage.getItem('ar_active_currency') || 'USD';
+        this.converterMode = 'USD';
         this.rateHistory = JSON.parse(localStorage.getItem('ar_rate_history')) || [];
         this.paymentsChart = null;
 
@@ -19,7 +22,9 @@ class AccountsApp {
     }
 
     async init() {
-        document.getElementById('exchangeRateInput').value = this.exchangeRate.toFixed(2);
+        const rate = this.activeCurrency === 'USD' ? this.exchangeRate : this.exchangeRateEUR;
+        document.getElementById('exchangeRateInput').value = rate.toFixed(2);
+        this.updateHeaderUI();
         this.bindEvents();
         this.bindAuthEvents();
 
@@ -62,14 +67,31 @@ class AccountsApp {
             this.fetchBCVRate();
         });
 
+        // Currency Toggle in Header
+        document.querySelectorAll('#headerCurrencySwitch button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const curr = e.target.dataset.curr;
+                this.setActiveCurrency(curr);
+            });
+        });
+
+        // Converter Currency Tabs
+        document.querySelectorAll('#converterCurrencyTabs button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const mode = e.target.dataset.mode;
+                this.setConverterMode(mode);
+            });
+        });
+
         // Converter logic
         const convUSD = document.getElementById('convUSD');
         const convVEF = document.getElementById('convVEF');
 
         convUSD.addEventListener('input', (e) => {
-            const usd = parseFloat(e.target.value);
-            if (!isNaN(usd)) {
-                convVEF.value = (usd * this.exchangeRate).toFixed(2);
+            const val = parseFloat(e.target.value);
+            const rate = this.converterMode === 'EUR' ? this.exchangeRateEUR : this.exchangeRate;
+            if (!isNaN(val)) {
+                convVEF.value = (val * rate).toFixed(2);
             } else {
                 convVEF.value = '';
             }
@@ -77,8 +99,9 @@ class AccountsApp {
 
         convVEF.addEventListener('input', (e) => {
             const vef = parseFloat(e.target.value);
+            const rate = this.converterMode === 'EUR' ? this.exchangeRateEUR : this.exchangeRate;
             if (!isNaN(vef)) {
-                convUSD.value = (vef / this.exchangeRate).toFixed(2);
+                convUSD.value = (vef / rate).toFixed(2);
             } else {
                 convUSD.value = '';
             }
@@ -388,11 +411,14 @@ class AccountsApp {
     }
 
     formatCurrency(amount) {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        const symbol = this.activeCurrency === 'EUR' ? '€' : '$';
+        const currCode = this.activeCurrency === 'EUR' ? 'EUR' : 'USD';
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: currCode }).format(amount);
     }
 
     formatVEF(amount) {
-        const vefAmount = amount * this.exchangeRate;
+        const rate = this.activeCurrency === 'EUR' ? this.exchangeRateEUR : this.exchangeRate;
+        const vefAmount = amount * rate;
         return 'Bs. ' + new Intl.NumberFormat('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(vefAmount);
     }
 
@@ -409,20 +435,24 @@ class AccountsApp {
 
     async fetchBCVRate() {
         const btn = document.getElementById('syncRateBtn');
-        const input = document.getElementById('exchangeRateInput');
-
         btn.classList.add('loading');
 
         try {
-            // Using a community mirror of BCV to avoid CORS issues
-            const response = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
-            const data = await response.json();
-
-            if (data && data.promedio) {
-                const rate = data.promedio;
-                this.updateExchangeRate(rate);
-                this.showToast(`Sincronizado con BCV: ${rate.toFixed(2)} Bs.`);
+            // Fetch USD
+            const resUSD = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+            const dataUSD = await resUSD.json();
+            if (dataUSD && dataUSD.promedio) {
+                this.updateExchangeRate(dataUSD.promedio, 'USD');
             }
+
+            // Fetch EUR
+            const resEUR = await fetch('https://ve.dolarapi.com/v1/euros/oficial');
+            const dataEUR = await resEUR.json();
+            if (dataEUR && dataEUR.promedio) {
+                this.updateExchangeRate(dataEUR.promedio, 'EUR');
+            }
+
+            this.showToast('Tasas sincronizadas con BCV');
         } catch (error) {
             console.error('Error fetching BCV rate:', error);
             this.showToast('No se pudo conectar con el BCV', 'error');
@@ -483,30 +513,119 @@ class AccountsApp {
         document.getElementById('convVEF').value = '';
     }
 
-    updateExchangeRate(rate) {
-        this.exchangeRate = rate;
-        document.getElementById('exchangeRateInput').value = rate.toFixed(2);
-        localStorage.setItem('ar_exchange_rate', rate);
-
-        // Update history for the sparkline (max 10 points)
-        const today = new Date().toISOString().split('T')[0];
-        const lastEntry = this.rateHistory[this.rateHistory.length - 1];
-
-        if (!lastEntry || lastEntry.date !== today) {
-            this.rateHistory.push({ date: today, rate: rate });
+    updateExchangeRate(rate, currency = 'USD') {
+        if (currency === 'USD') {
+            this.exchangeRate = rate;
+            localStorage.setItem('ar_exchange_rate', rate);
         } else {
-            lastEntry.rate = rate; // Update today's rate if multiple syncs
+            this.exchangeRateEUR = rate;
+            localStorage.setItem('ar_exchange_rate_eur', rate);
         }
 
-        if (this.rateHistory.length > 10) this.rateHistory.shift();
-        localStorage.setItem('ar_rate_history', JSON.stringify(this.rateHistory));
+        if (this.activeCurrency === currency) {
+            document.getElementById('exchangeRateInput').value = rate.toFixed(2);
+        }
+
+        // Update converter display if currently in that view and mode matches sync
+        const convDisplay = document.getElementById('converterRateDisplay');
+        if (this.currentViewId === 'converter-view' && this.converterMode === currency) {
+            const symbol = currency === 'EUR' ? '€' : '$';
+            convDisplay.textContent = `Tasa actual: 1${symbol} = ${rate.toFixed(2)} Bs.`;
+        }
+
+        // Update history only for USD for simplicity in the sparkline
+        if (currency === 'USD') {
+            const today = new Date().toISOString().split('T')[0];
+            const lastEntry = this.rateHistory[this.rateHistory.length - 1];
+
+            if (!lastEntry || lastEntry.date !== today) {
+                this.rateHistory.push({ date: today, rate: rate });
+            } else {
+                lastEntry.rate = rate;
+            }
+
+            if (this.rateHistory.length > 10) this.rateHistory.shift();
+            localStorage.setItem('ar_rate_history', JSON.stringify(this.rateHistory));
+            this.renderSparkline();
+        }
 
         this.renderDashboard();
-        this.renderSparkline();
 
         if (this.currentClientId && this.currentViewId === 'client-profile-view') {
             this.renderClientProfile(this.currentClientId);
         }
+    }
+
+    setActiveCurrency(curr) {
+        this.activeCurrency = curr;
+        localStorage.setItem('ar_active_currency', curr);
+
+        // Update UI
+        document.querySelectorAll('#headerCurrencySwitch button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.curr === curr);
+        });
+
+        const rate = curr === 'USD' ? this.exchangeRate : this.exchangeRateEUR;
+        document.getElementById('exchangeRateInput').value = rate.toFixed(2);
+        document.getElementById('headerRateSymbol').textContent = curr === 'USD' ? '$' : '€';
+        document.getElementById('rateLabel').textContent = `Tasa BCV (${curr})`;
+
+        // Auto-fetch if rate is default 1.0
+        if (rate === 1) {
+            this.fetchBCVRate();
+        }
+
+        // Update Global Icons
+        const iconClass = curr === 'EUR' ? 'ph ph-currency-eur' : 'ph ph-currency-dollar';
+        document.getElementById('debtCardIcon').className = iconClass;
+        document.getElementById('txAmountIcon').className = iconClass;
+
+        this.renderDashboard();
+        this.renderClientsTable(document.getElementById('globalSearchInput').value);
+
+        if (this.currentClientId && this.currentViewId === 'client-profile-view') {
+            this.renderClientProfile(this.currentClientId);
+        }
+    }
+
+    setConverterMode(mode) {
+        this.converterMode = mode;
+        document.querySelectorAll('#converterCurrencyTabs button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.mode === mode);
+        });
+
+        // Update labels and icons
+        const symbol = mode === 'EUR' ? '€' : '$';
+        const label = mode === 'EUR' ? 'Euros (€)' : 'Dólares ($)';
+        const icon = mode === 'EUR' ? 'ph-currency-eur' : 'ph-currency-dollar';
+
+        document.getElementById('convInputLabel').textContent = label;
+        const iconEl = document.getElementById('convInputIcon');
+        iconEl.className = `ph ${icon}`;
+
+        const rate = mode === 'EUR' ? this.exchangeRateEUR : this.exchangeRate;
+        document.getElementById('converterRateDisplay').textContent = `Tasa actual: 1${symbol} = ${rate.toFixed(2)} Bs.`;
+
+        // If rate is default 1.0, try to fetch it
+        if (rate === 1) {
+            this.fetchBCVRate();
+        }
+
+        this.resetConverter();
+    }
+
+    updateHeaderUI() {
+        document.querySelectorAll('#headerCurrencySwitch button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.curr === this.activeCurrency);
+        });
+        document.getElementById('headerRateSymbol').textContent = this.activeCurrency === 'USD' ? '$' : '€';
+        document.getElementById('rateLabel').textContent = `Tasa BCV (${this.activeCurrency})`;
+
+        const iconClass = this.activeCurrency === 'EUR' ? 'ph ph-currency-eur' : 'ph ph-currency-dollar';
+        const debtCardIcon = document.getElementById('debtCardIcon');
+        const txAmountIcon = document.getElementById('txAmountIcon');
+        if (debtCardIcon) debtCardIcon.className = iconClass;
+        if (txAmountIcon) txAmountIcon.className = iconClass;
     }
 
     renderSparkline() {
@@ -588,7 +707,9 @@ class AccountsApp {
             this.renderGlobalTransactions();
         } else if (viewId === 'converter-view') {
             topHeaderTitle.textContent = 'Convertidor';
-            document.getElementById('converterRateDisplay').textContent = `Tasa actual: 1$ = ${this.exchangeRate.toFixed(2)} Bs.`;
+            const rate = this.converterMode === 'EUR' ? this.exchangeRateEUR : this.exchangeRate;
+            const symbol = this.converterMode === 'EUR' ? '€' : '$';
+            document.getElementById('converterRateDisplay').textContent = `Tasa actual: 1${symbol} = ${rate.toFixed(2)} Bs.`;
         } else if (viewId === 'data-management-view') {
             topHeaderTitle.textContent = 'Base de Datos';
         }
@@ -1265,7 +1386,7 @@ class AccountsApp {
             </table>
 
             <div style="margin-top: 50px; text-align: center; color: #64748b; font-size: 12px;">
-                <p>Generado por Inversiones Morey - Tasa referencial BCV: ${this.exchangeRate.toFixed(2)} Bs.</p>
+                <p>Generado por Inversiones Morey - Tasa referencial BCV (${this.activeCurrency}): ${(this.activeCurrency === 'EUR' ? this.exchangeRateEUR : this.exchangeRate).toFixed(2)} Bs.</p>
                 <p>Este documento es un comprobante de control interno.</p>
             </div>
         `;
