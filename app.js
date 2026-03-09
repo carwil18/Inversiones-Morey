@@ -757,6 +757,65 @@ class AccountsApp {
         document.getElementById('totalMonthCollectedVEF').textContent = this.formatVEF(monthPayments);
 
         this.renderDailyChart();
+        this.renderAgingReport();
+    }
+
+    renderAgingReport() {
+        const container = document.getElementById('agingReportContainer');
+        if (!container) return;
+
+        const now = Date.now();
+        const DayMs = 24 * 60 * 60 * 1000;
+
+        const buckets = [
+            { label: '0-30 Días', min: 0, max: 30, amount: 0, count: 0, risk: 0 },
+            { label: '31-60 Días', min: 31, max: 60, amount: 0, count: 0, risk: 1 },
+            { label: '61-90 Días', min: 61, max: 90, amount: 0, count: 0, risk: 2 },
+            { label: '+90 Días', min: 91, max: 9999, amount: 0, count: 0, risk: 3 }
+        ];
+
+        this.clients.forEach(client => {
+            const balance = this.getClientBalance(client.id);
+            if (balance <= 0) return;
+
+            // Find oldest unpaid invoice (or just use last payment date logic)
+            // For simplicity in this logic, we use the date of the first SALE that contributed to current debt
+            const clientTxs = this.transactions
+                .filter(t => String(t.clientId).toLowerCase() === String(client.uuid).toLowerCase())
+                .sort((a, b) => a.createdAt - b.createdAt);
+
+            const firstSale = clientTxs.find(t => t.type === 'SALE');
+            if (!firstSale) return;
+
+            const ageDays = Math.floor((now - firstSale.createdAt) / DayMs);
+
+            const bucket = buckets.find(b => ageDays >= b.min && ageDays <= b.max) || buckets[buckets.length - 1];
+            bucket.amount += balance;
+            bucket.count++;
+        });
+
+        container.innerHTML = buckets.map(b => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <div style="width: 8px; height: 8px; border-radius: 50%; background: ${this.getRiskColor(b.risk)};"></div>
+                    <span style="font-size: 0.85rem; color: var(--text-primary);">${b.label}</span>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-weight: 500; font-size: 0.85rem; color: var(--text-primary);">${this.formatCurrency(b.amount)}</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted);">${b.count} clientes</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    getRiskColor(risk) {
+        switch (risk) {
+            case 0: return 'var(--accent-blue)';
+            case 1: return '#f59e0b';
+            case 2: return '#ef4444';
+            case 3: return '#7f1d1d';
+            default: return 'var(--text-muted)';
+        }
     }
 
     renderDailyChart() {
@@ -1142,11 +1201,17 @@ class AccountsApp {
                         <h4>${tx.description || (isSale ? 'Venta' : 'Abono')}</h4>
                         <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'}</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="tx-actions">
                         <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
                             <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
                             <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
                         </div>
+                        <button class="icon-btn-sm" onclick="app.openEditTransactionModal('${tx.id}')" title="Editar Transacción">
+                            <i class="ph ph-pencil-simple"></i>
+                        </button>
+                        <button class="icon-btn-sm" onclick="app.deleteTransaction('${tx.id}')" title="Eliminar Transacción" style="color: var(--accent-red);">
+                            <i class="ph ph-trash"></i>
+                        </button>
                         <button class="icon-btn-sm" onclick="app.generatePDF('${tx.id}')" title="Descargar Recibo">
                             <i class="ph ph-download-simple"></i>
                         </button>
@@ -1206,11 +1271,17 @@ class AccountsApp {
                         <h4>${tx.description || (isSale ? 'Venta' : 'Abono')}</h4>
                         <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'} • <strong>${clientName}</strong></span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div class="tx-actions">
                         <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
                             <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
                             <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
                         </div>
+                        <button class="icon-btn-sm" onclick="app.openEditTransactionModal('${tx.id}')" title="Editar Transacción">
+                            <i class="ph ph-pencil-simple"></i>
+                        </button>
+                        <button class="icon-btn-sm" onclick="app.deleteTransaction('${tx.id}')" title="Eliminar Transacción" style="color: var(--accent-red);">
+                            <i class="ph ph-trash"></i>
+                        </button>
                         <button class="icon-btn-sm" onclick="app.generatePDF('${tx.id}')" title="Descargar Recibo">
                             <i class="ph ph-download-simple"></i>
                         </button>
@@ -1225,6 +1296,7 @@ class AccountsApp {
 
     openTransactionModal(type) {
         document.getElementById('txType').value = type;
+        document.getElementById('txId').value = '';
         const title = type === 'SALE' ? 'Registrar Nueva Venta (Aumento de Deuda)' : 'Registrar Abono (Reducción de Deuda)';
         document.getElementById('txModalTitle').textContent = title;
         document.getElementById('transactionForm').reset();
@@ -1257,7 +1329,46 @@ class AccountsApp {
         setTimeout(() => modal.classList.add('hidden'), 300);
     }
 
+    async deleteTransaction(txId) {
+        if (!confirm('¿Estás seguro de que deseas eliminar esta transacción? Esta acción afectará el saldo del cliente.')) return;
+
+        try {
+            const { error } = await this.supabase.from('transactions').delete().eq('id', txId).eq('user_id', this.user.id);
+            if (error) {
+                const { error: error2 } = await this.supabase.from('transactions').delete().eq('local_id', txId).eq('user_id', this.user.id);
+                if (error2) throw error2;
+            }
+
+            this.showToast('Transacción eliminada con éxito');
+            await this.saveData();
+        } catch (err) {
+            console.error("Delete Tx Error:", err);
+            this.showToast('Error al eliminar transacción', 'error');
+        }
+    }
+
+    openEditTransactionModal(txId) {
+        const tx = this.transactions.find(t => String(t.id) === String(txId) || String(t.local_id) === String(txId));
+        if (!tx) return;
+
+        this.openTransactionModal(tx.type);
+        document.getElementById('txId').value = tx.local_id || tx.id;
+        document.getElementById('txModalTitle').textContent = tx.type === 'SALE' ? 'Editar Venta' : 'Editar Abono';
+        document.getElementById('txAmount').value = tx.amount;
+        document.getElementById('txDescription').value = tx.description;
+
+        // Date handling
+        const d = new Date(tx.createdAt);
+        const dateStr = d.toISOString().slice(0, 16);
+        document.getElementById('txDate').value = dateStr;
+
+        if (tx.type === 'PAYMENT' && tx.payment_method) {
+            document.getElementById('txPaymentMethod').value = tx.payment_method;
+        }
+    }
+
     async handleTransactionSubmit() {
+        const txId = document.getElementById('txId').value;
         const type = document.getElementById('txType').value;
         const amount = parseFloat(document.getElementById('txAmount').value);
         const description = document.getElementById('txDescription').value;
@@ -1273,28 +1384,39 @@ class AccountsApp {
             return;
         }
 
-        const remoteClientId = dbClient.uuid;
-
-        const { error } = await this.supabase.from('transactions').insert({
-            client_id: remoteClientId,
+        const payload = {
+            client_id: dbClient.uuid,
             type,
             amount,
             description,
             payment_method: paymentMethod,
             created_at: txDate.toISOString(),
-            local_id: this.getUniqueId(),
             user_id: this.user.id
-        });
+        };
 
-        if (error) {
-            console.error("Supabase Error:", error);
-            this.showToast('Error al registrar transacción', 'error');
-            return;
+        try {
+            if (txId) {
+                // Update
+                const { error } = await this.supabase.from('transactions').update(payload).eq('local_id', txId).eq('user_id', this.user.id);
+                if (error) {
+                    const { error: error2 } = await this.supabase.from('transactions').update(payload).eq('id', txId).eq('user_id', this.user.id);
+                    if (error2) throw error2;
+                }
+                this.showToast('Transacción actualizada');
+            } else {
+                // Insert
+                payload.local_id = this.getUniqueId();
+                const { error } = await this.supabase.from('transactions').insert(payload);
+                if (error) throw error;
+                this.showToast(type === 'SALE' ? 'Venta registrada' : 'Abono registrado');
+            }
+
+            await this.saveData();
+            this.closeTransactionModal();
+        } catch (error) {
+            console.error("Tx Submit Error:", error);
+            this.showToast('Error al procesar la transacción', 'error');
         }
-
-        await this.saveData();
-        this.closeTransactionModal();
-        this.showToast(type === 'SALE' ? 'Venta registrada' : 'Abono registrado');
     }
 
     sendWhatsApp() {
@@ -1311,14 +1433,19 @@ class AccountsApp {
             return;
         }
 
-        let msg = `Hola ${client.name},\n\nTe escribimos de *Inversiones Morey*.\n`;
+        let msg = `Hola *${client.name}*,\n\nTe escribimos de *Inversiones Morey* para saludarte. 👋\n\n`;
 
         if (balance > 0) {
-            msg += `Queremos recordarte gentilmente que tienes un saldo pendiente de *${this.formatCurrency(balance)}* (${this.formatVEF(balance)}).\n\nQuedamos atentos a tu abono. ¡Feliz día!`;
+            const isVeryLate = this.isClientMorose(client.id);
+            if (isVeryLate) {
+                msg += `Estamos revisando nuestras cuentas y notamos que tienes un saldo pendiente de *${this.formatCurrency(balance)}* (${this.formatVEF(balance)}) con más de 30 días de antigüedad.\n\nTe agradecemos si puedes ponerte al día lo antes posible. Si ya realizaste el pago, por favor envíanos el comprobante.`;
+            } else {
+                msg += `Te recordamos gentilmente que tu saldo actual es de *${this.formatCurrency(balance)}* (${this.formatVEF(balance)}).\n\nQuedamos atentos a cualquier abono que desees realizar. ¡Feliz día!`;
+            }
         } else if (balance === 0) {
-            msg += `Solo pasábamos para saludarte y confirmar que tu saldo actual es de *${this.formatCurrency(0)}*.\n\n¡Gracias por preferirnos!`;
+            msg += `Queríamos confirmarte que tu cuenta se encuentra al día. ¡Muchas gracias por tu responsabilidad y por preferirnos! ✨`;
         } else {
-            msg += `Tienes un saldo a favor con nosotros de *${this.formatCurrency(Math.abs(balance))}*.\n\n¡Gracias por tu confianza!`;
+            msg += `Tienes un saldo a favor de *${this.formatCurrency(Math.abs(balance))}*.\n\n¡Gracias por tu confianza!`;
         }
 
         const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
@@ -1331,7 +1458,10 @@ class AccountsApp {
 
         const clientUuid = String(tx.clientId).toLowerCase();
         const client = this.clients.find(c => String(c.uuid).toLowerCase() === clientUuid || String(c.id).toLowerCase() === clientUuid);
-        const clientName = client ? client.name : 'Cliente Desconocido';
+        if (!client) return;
+
+        const balanceAfter = this.getClientBalance(client.id);
+        const clientName = client.name;
         const clientPhone = client ? client.phone || 'N/A' : 'N/A';
         const clientAddress = client ? client.address || 'N/A' : 'N/A';
 
@@ -1368,22 +1498,36 @@ class AccountsApp {
                 </div>
             </div>
 
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
                 <thead>
                     <tr style="background-color: #f1f5f9;">
                         <th style="padding: 12px; text-align: left; color: #0f172a; border-bottom: 1px solid #cbd5e1;">Descripción</th>
                         <th style="padding: 12px; text-align: right; color: #0f172a; border-bottom: 1px solid #cbd5e1;">Monto (USD)</th>
-                        <th style="padding: 12px; text-align: right; color: #0f172a; border-bottom: 1px solid #cbd5e1;">Eq. Bolívares</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr>
                         <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">${tx.description || (isSale ? 'Venta general' : 'Abono general')}</td>
                         <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e2e8f0; color: #334155; font-weight: bold;">${this.formatCurrency(tx.amount)}</td>
-                        <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e2e8f0; color: #334155;">${this.formatVEF(tx.amount)}</td>
                     </tr>
                 </tbody>
             </table>
+
+            <div style="display: flex; justify-content: flex-end;">
+                <div style="width: 250px;">
+                    <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; color: #64748b;">
+                        <span>Saldo Anterior:</span>
+                        <span>${this.formatCurrency(isSale ? (balanceAfter - tx.amount) : (balanceAfter + tx.amount))}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 5px 0; font-size: 14px; color: #0f172a; font-weight: bold; border-top: 1px solid #e2e8f0;">
+                        <span>Saldo Pendiente:</span>
+                        <span style="color: ${balanceAfter > 0 ? '#ef4444' : '#10b981'}">${this.formatCurrency(balanceAfter)}</span>
+                    </div>
+                    <div style="text-align: right; font-size: 11px; color: #94a3b8; margin-top: 5px;">
+                        (${this.formatVEF(balanceAfter)})
+                    </div>
+                </div>
+            </div>
 
             <div style="margin-top: 50px; text-align: center; color: #64748b; font-size: 12px;">
                 <p>Generado por Inversiones Morey - Tasa referencial BCV (${this.activeCurrency}): ${(this.activeCurrency === 'EUR' ? this.exchangeRateEUR : this.exchangeRate).toFixed(2)} Bs.</p>

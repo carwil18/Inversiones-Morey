@@ -181,63 +181,75 @@
                     </div>
 
                     <div class="dashboard-grid">
-                        <!-- Daily Payments Chart Card -->
-                        <div class="glass-card chart-card">
-                            <div class="card-header"
-                                style="display: flex; justify-content: space-between; align-items: center;">
-                                <h3>Pagos Recibidos</h3>
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <select id="chartTimeRange" class="select-sm"
-                                        style="width: auto; padding: 0.25rem 2rem 0.25rem 0.75rem; font-size: 0.75rem;">
-                                        <option value="1">Hoy</option>
-                                        <option value="3">Últimos 3 días</option>
-                                        <option value="7">Últimos 7 días</option>
-                                        <option value="30">Último mes</option>
-                                    </select>
-                                    <div class="badge-status success">Actividad</div>
+                        <div class="dashboard-grid">
+                            <!-- Daily Payments Chart Card -->
+                            <div class="glass-card chart-card">
+                                <div class="card-header"
+                                    style="display: flex; justify-content: space-between; align-items: center;">
+                                    <h3>Pagos Recibidos</h3>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <select id="chartTimeRange" class="select-sm"
+                                            style="width: auto; padding: 0.25rem 2rem 0.25rem 0.75rem; font-size: 0.75rem;">
+                                            <option value="1">Hoy</option>
+                                            <option value="3">Últimos 3 días</option>
+                                            <option value="7">Últimos 7 días</option>
+                                            <option value="30">Último mes</option>
+                                        </select>
+                                        <div class="badge-status success">Actividad</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="chart-container-large">
-                                <canvas id="dailyPaymentsChart"></canvas>
-                                <div id="emptyChartState" class="empty-state hidden">
-                                    <i class="ph ph-chart-bar"></i>
-                                    <p>No se han registrado pagos hoy.</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Daily Stats Card -->
-                        <div class="glass-card stats-mini-card">
-                            <div class="card-header">
-                                <h3 id="statsSummaryTitle">Resumen del Día</h3>
-                            </div>
-                            <div class="mini-stats-grid">
-                                <div class="mini-stat">
-                                    <span class="label" id="collectedLabel">Cobrado Hoy</span>
-                                    <h4 id="todayCollectedAmount">$0.00</h4>
-                                </div>
-                                <div class="mini-stat">
-                                    <span class="label" id="salesLabel">Ventas Hoy</span>
-                                    <h4 id="todaySalesAmount">$0.00</h4>
-                                </div>
-                                <div class="mini-stat warning" onclick="app.switchView('clients-view')"
-                                    style="cursor: pointer;">
-                                    <span class="label">Clientes Morosos</span>
-                                    <h4 id="moroseClientsCount">0</h4>
+                                <div class="chart-container-large">
+                                    <canvas id="dailyPaymentsChart"></canvas>
+                                    <div id="emptyChartState" class="empty-state hidden">
+                                        <i class="ph ph-chart-bar"></i>
+                                        <p>No se han registrado pagos hoy.</p>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="card-header"
-                                style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; padding-bottom: 0;">
-                                <h3 style="font-size: 0.9rem; color: var(--text-secondary);">Desglose por Método de Pago
-                                </h3>
-                            </div>
-                            <div id="paymentMethodsBreakdown"
-                                style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
-                                <!-- Payment methods injected here -->
+                            <!-- Daily Stats Card -->
+                            <div class="glass-card stats-mini-card">
+                                <div class="card-header">
+                                    <h3 id="statsSummaryTitle">Resumen del Día</h3>
+                                </div>
+                                <div class="mini-stats-grid">
+                                    <div class="mini-stat">
+                                        <span class="label" id="collectedLabel">Cobrado Hoy</span>
+                                        <h4 id="todayCollectedAmount">$0.00</h4>
+                                    </div>
+                                    <div class="mini-stat">
+                                        <span class="label" id="salesLabel">Ventas Hoy</span>
+                                        <h4 id="todaySalesAmount">$0.00</h4>
+                                    </div>
+                                    <div class="mini-stat warning" onclick="app.switchView('clients-view')"
+                                        style="cursor: pointer;">
+                                        <span class="label">Clientes Morosos</span>
+                                        <h4 id="moroseClientsCount">0</h4>
+                                    </div>
+                                </div>
+
+                                <div class="card-header"
+                                    style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; padding-bottom: 0;">
+                                    <h3 style="font-size: 0.9rem; color: var(--text-secondary);">Desglose por Método de
+                                        Pago
+                                    </h3>
+                                </div>
+                                <div id="paymentMethodsBreakdown"
+                                    style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                                    <!-- Payment methods injected here -->
+                                </div>
+
+                                <div class="card-header"
+                                    style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; padding-bottom: 0;">
+                                    <h3 style="font-size: 0.9rem; color: var(--text-secondary);">Antigüedad de Deuda
+                                    </h3>
+                                </div>
+                                <div id="agingReportContainer"
+                                    style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                                    <!-- Aging buckets injected here -->
+                                </div>
                             </div>
                         </div>
-                    </div>
 
                 </section>
 
@@ -294,11 +306,24 @@
                                 <label for="clientCategory">Categoría</label>
                                 <select id="clientCategory">
                                     <option value="" disabled selected>Seleccione una categoría</option>
+                                    <option value="Administración">Administración</option>
                                     <option value="Ambulatorio">Ambulatorio</option>
-                                    <option value="Gobernación">Gobernación</option>
+                                    <option value="Bienestar Social">Bienestar Social</option>
+                                    <option value="Caja">Caja</option>
+                                    <option value="Consejo Municipal">Consejo Municipal</option>
+                                    <option value="Consultoria Juridica">Consultoria Juridica</option>
                                     <option value="Contraloria">Contraloria</option>
+                                    <option value="Epidemiología">Epidemiología</option>
+                                    <option value="Gobernación">Gobernación</option>
+                                    <option value="HMNT">HMNT</option>
+                                    <option value="Hospital">Hospital</option>
+                                    <option value="INSA Monagas">INSA Monagas</option>
+                                    <option value="Jose Tadeo">Jose Tadeo</option>
                                     <option value="Libertad">Libertad</option>
-                                    <option value="Salud">Salud</option>
+                                    <option value="Planificación">Planificación</option>
+                                    <option value="Proveeduría">Proveeduría</option>
+                                    <option value="RRHH">RRHH</option>
+                                    <option value="Otros">Otros</option>
                                 </select>
                             </div>
                             <div class="form-row">
@@ -522,6 +547,7 @@
                 <button class="icon-btn close-modal"><i class="ph ph-x"></i></button>
             </div>
             <form id="transactionForm">
+                <input type="hidden" id="txId">
                 <input type="hidden" id="txType">
                 <div class="form-row">
                     <div class="form-group">

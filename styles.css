@@ -856,6 +856,64 @@ select.select-sm {
     font-size: 1.125rem;
 }
 
+.tx-actions {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+/* Aging Report */
+.aging-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.aging-bucket {
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: var(--radius-md);
+    text-align: center;
+    border-bottom: 3px solid transparent;
+}
+
+.aging-bucket.risk-0 {
+    border-bottom-color: var(--accent-blue);
+}
+
+.aging-bucket.risk-1 {
+    border-bottom-color: #f59e0b;
+}
+
+.aging-bucket.risk-2 {
+    border-bottom-color: #ef4444;
+}
+
+.aging-bucket.risk-3 {
+    border-bottom-color: #7f1d1d;
+}
+
+.aging-bucket .label {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.aging-bucket .value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: block;
+}
+
+.aging-bucket .count {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+}
+
 /* Modals */
 .modal-overlay {
     position: fixed;
