@@ -17,11 +17,16 @@ class AccountsApp {
         this.converterMode = 'USD';
         this.rateHistory = JSON.parse(localStorage.getItem('ar_rate_history')) || [];
         this.paymentsChart = null;
+        this.categoryDebtChart = null;
+        this.theme = localStorage.getItem('ar_theme') || 'dark';
+        this.clientsLimit = 30;
+        this.txLimit = 30;
 
         this.init();
     }
 
     async init() {
+        this.applyTheme(this.theme);
         const rate = this.activeCurrency === 'USD' ? this.exchangeRate : this.exchangeRateEUR;
         document.getElementById('exchangeRateInput').value = rate.toFixed(2);
         this.updateHeaderUI();
@@ -34,10 +39,42 @@ class AccountsApp {
             this.handleAuthStateChange(session.user);
         }
 
+        // Password Recovery Listener
+        this.supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'PASSWORD_RECOVERY') {
+                const modal = document.getElementById('updatePwdModal');
+                if (modal) {
+                    modal.classList.remove('hidden');
+                    setTimeout(() => modal.classList.add('active'), 10);
+                }
+            }
+        });
+
         this.fetchBCVRate(); // Sync on load
     }
 
     bindEvents() {
+        // Theme Toggle
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        if (themeToggleBtn) themeToggleBtn.addEventListener('click', () => this.toggleTheme());
+
+        // Pagination Load More
+        const loadMoreClientsBtn = document.getElementById('loadMoreClientsBtn');
+        if (loadMoreClientsBtn) {
+            loadMoreClientsBtn.addEventListener('click', () => {
+                this.clientsLimit += 30;
+                this.renderClientsTable(document.getElementById('globalSearchInput').value);
+            });
+        }
+
+        const loadMoreTxBtn = document.getElementById('loadMoreTxBtn');
+        if (loadMoreTxBtn) {
+            loadMoreTxBtn.addEventListener('click', () => {
+                this.txLimit += 30;
+                this.renderGlobalTransactions();
+            });
+        }
+
         // Main Navigation
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -48,6 +85,7 @@ class AccountsApp {
 
         // Search
         document.getElementById('globalSearchInput').addEventListener('input', (e) => {
+            this.clientsLimit = 30;
             this.renderClientsTable(e.target.value);
         });
 
@@ -66,6 +104,20 @@ class AccountsApp {
         document.getElementById('syncRateBtn').addEventListener('click', () => {
             this.fetchBCVRate();
         });
+
+        // Profile Transactions Search & Filter
+        const profileTxSearch = document.getElementById('profileTxSearch');
+        const profileTxFilter = document.getElementById('profileTxFilterType');
+        const profileTxDateFilter = document.getElementById('profileTxFilterDate');
+        if (profileTxSearch) {
+            profileTxSearch.addEventListener('input', () => this.renderClientProfile(this.currentClientId));
+        }
+        if (profileTxFilter) {
+            profileTxFilter.addEventListener('change', () => this.renderClientProfile(this.currentClientId));
+        }
+        if (profileTxDateFilter) {
+            profileTxDateFilter.addEventListener('change', () => this.renderClientProfile(this.currentClientId));
+        }
 
         // Currency Toggle in Header
         document.querySelectorAll('#headerCurrencySwitch button').forEach(btn => {
@@ -120,9 +172,11 @@ class AccountsApp {
 
         // Global Transactions filters
         document.getElementById('txFilterType').addEventListener('change', () => {
+            this.txLimit = 30;
             this.renderGlobalTransactions();
         });
         document.getElementById('txFilterDate').addEventListener('change', () => {
+            this.txLimit = 30;
             this.renderGlobalTransactions();
         });
 
@@ -189,6 +243,52 @@ class AccountsApp {
                 icon.className = 'ph ph-eye';
             }
         });
+
+        const forgotPwdBtn = document.getElementById('forgotPwdBtn');
+        if (forgotPwdBtn) {
+            forgotPwdBtn.addEventListener('click', () => this.handleForgotPassword());
+        }
+
+        // Update Password Logic
+        const updatePwdForm = document.getElementById('updatePwdForm');
+        const closeUpdatePwdBtn = document.getElementById('closeUpdatePwdBtn');
+        if (updatePwdForm) {
+            updatePwdForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleUpdatePassword();
+            });
+        }
+        if (closeUpdatePwdBtn) {
+            closeUpdatePwdBtn.addEventListener('click', () => {
+                const modal = document.getElementById('updatePwdModal');
+                modal.classList.remove('active');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            });
+        }
+    }
+
+    // --- Theme Logic ---
+    applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        const themeText = document.getElementById('themeToggleText');
+        const themeIcon = document.querySelector('#themeToggleBtn i');
+        if (theme === 'light') {
+            if (themeText) themeText.textContent = 'Modo Oscuro';
+            if (themeIcon) themeIcon.className = 'ph ph-moon';
+        } else {
+            if (themeText) themeText.textContent = 'Modo Claro';
+            if (themeIcon) themeIcon.className = 'ph ph-sun';
+        }
+    }
+
+    toggleTheme() {
+        this.theme = this.theme === 'light' ? 'dark' : 'light';
+        localStorage.setItem('ar_theme', this.theme);
+        this.applyTheme(this.theme);
+        // Chart colors force update
+        if (this.currentViewId === 'dashboard-view') {
+            this.renderDashboard();
+        }
     }
 
     // --- Auth Logic ---
@@ -199,17 +299,79 @@ class AccountsApp {
         const subtitle = document.getElementById('auth-subtitle');
         const btn = document.getElementById('loginBtn');
         const toggle = document.getElementById('toggleAuthBtn');
+        const forgotBtn = document.getElementById('forgotPwdBtn');
 
         if (this.isSignUp) {
             title.textContent = 'Crear Cuenta';
             subtitle.textContent = 'Regístrate para comenzar a gestionar tus cuentas';
             btn.textContent = 'Registrarse';
             toggle.textContent = '¿Ya tienes cuenta? Inicia sesión';
+            if (forgotBtn) forgotBtn.style.display = 'none';
         } else {
             title.textContent = 'Inversiones Morey';
             subtitle.textContent = 'Inicia sesión para gestionar tus cobranzas';
             btn.textContent = 'Entrar';
             toggle.textContent = '¿No tienes cuenta? Regístrate';
+            if (forgotBtn) forgotBtn.style.display = 'block';
+        }
+    }
+
+    async handleForgotPassword() {
+        const emailInput = document.getElementById('loginEmail');
+        const email = emailInput.value.trim();
+
+        if (!email) {
+            this.showToast('Ingresa tu correo en el campo superior primero', 'info');
+            emailInput.focus();
+            return;
+        }
+
+        const btn = document.getElementById('forgotPwdBtn');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-circle-notch animate-spin"></i> Enviando...';
+
+        try {
+            const { error } = await this.supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: window.location.origin
+            });
+
+            if (error) throw error;
+            this.showToast('Te hemos enviado un correo. Revisa tu bandeja de entrada o spam.', 'success');
+        } catch (error) {
+            console.error("Forgot pwd error:", error);
+            this.showToast('Error al procesar la solicitud', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    async handleUpdatePassword() {
+        const newPassword = document.getElementById('newPassword').value;
+        const btn = document.getElementById('updatePwdBtn');
+        const originalText = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="ph ph-circle-notch animate-spin"></i> Guardando...';
+
+        try {
+            const { error } = await this.supabase.auth.updateUser({ password: newPassword });
+            if (error) throw error;
+
+            this.showToast('¡Tu contraseña ha sido actualizada con éxito!', 'success');
+
+            const modal = document.getElementById('updatePwdModal');
+            modal.classList.remove('active');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+            document.getElementById('updatePwdForm').reset();
+
+        } catch (error) {
+            console.error("Update pwd error:", error);
+            this.showToast('No se pudo actualizar la contraseña', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
     }
 
@@ -294,6 +456,9 @@ class AccountsApp {
     async syncWithSupabase() {
         if (!this.user) return;
 
+        // Show Skeletons
+        this.toggleSkeletons(true);
+
         // First check if migration is needed
         const localClients = JSON.parse(localStorage.getItem('ar_clients')) || [];
         const localTransactions = JSON.parse(localStorage.getItem('ar_transactions')) || [];
@@ -336,6 +501,40 @@ class AccountsApp {
         } catch (err) {
             console.error("Sync Error:", err);
             this.showToast('Error al sincronizar con la nube', 'error');
+        } finally {
+            this.toggleSkeletons(false);
+        }
+    }
+
+    toggleSkeletons(show) {
+        const containers = {
+            'totalClientsCount': 'skeleton-text',
+            'totalDebtAmount': 'skeleton-text',
+            'totalMonthCollected': 'skeleton-text',
+            'clientsTableBody': 'skeleton-table'
+        };
+
+        for (const [id, type] of Object.entries(containers)) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            if (show) {
+                if (id === 'clientsTableBody') {
+                    el.innerHTML = Array(5).fill(0).map(() => `
+                        <tr>
+                            <td><div class="skeleton skeleton-text"></div></td>
+                            <td><div class="skeleton skeleton-text"></div></td>
+                            <td><div class="skeleton skeleton-text"></div></td>
+                            <td><div class="skeleton skeleton-text"></div></td>
+                            <td><div class="skeleton skeleton-text"></div></td>
+                            <td><div class="skeleton skeleton-text"></div></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    el.classList.add('skeleton', 'skeleton-text');
+                }
+            } else {
+                el.classList.remove('skeleton', 'skeleton-text');
+            }
         }
     }
 
@@ -679,12 +878,23 @@ class AccountsApp {
         if (navBtn) navBtn.classList.add('active');
 
         // Toggle Sections
-        document.querySelectorAll('.view-section').forEach(sec => sec.classList.remove('active'));
+        const currentSection = document.getElementById(this.currentViewId);
         const targetSection = document.getElementById(viewId);
-        if (targetSection) {
+
+        if (currentSection && currentSection !== targetSection) {
+            currentSection.classList.add('fade-out');
+            setTimeout(() => {
+                currentSection.classList.remove('active', 'fade-out');
+                if (targetSection) {
+                    targetSection.classList.add('active', 'fade-in');
+                    setTimeout(() => targetSection.classList.remove('fade-in'), 300);
+                }
+            }, 300);
+        } else if (targetSection) {
             targetSection.classList.add('active');
-            this.currentViewId = viewId;
         }
+
+        this.currentViewId = viewId;
 
         // Header and Specific actions
         const topHeaderTitle = document.querySelector('.top-header h1');
@@ -757,7 +967,69 @@ class AccountsApp {
         document.getElementById('totalMonthCollectedVEF').textContent = this.formatVEF(monthPayments);
 
         this.renderDailyChart();
+        this.renderCategoryChart();
         this.renderAgingReport();
+    }
+
+    renderCategoryChart() {
+        const ctx = document.getElementById('categoryDebtChart').getContext('2d');
+        const debtsByCategory = {};
+
+        this.clients.forEach(c => {
+            const cat = c.category || 'Sin Categoría';
+            const balance = this.getClientBalance(c.id);
+            if (balance > 0) {
+                debtsByCategory[cat] = (debtsByCategory[cat] || 0) + balance;
+            }
+        });
+
+        const labels = Object.keys(debtsByCategory);
+        const data = Object.values(debtsByCategory);
+
+        if (labels.length === 0) return;
+
+        if (this.categoryDebtChart) this.categoryDebtChart.destroy();
+
+        this.categoryDebtChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: [
+                        '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 15
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: this.theme === 'light' ? '#475569' : '#94a3b8',
+                            font: { size: 11, family: 'Inter' },
+                            padding: 20,
+                            usePointStyle: true
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                let label = context.label || '';
+                                if (label) label += ': ';
+                                label += this.formatCurrency(context.parsed);
+                                return label;
+                            }
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
     }
 
     renderAgingReport() {
@@ -938,13 +1210,13 @@ class AccountsApp {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                        ticks: { color: '#94a3b8', font: { size: 10 } }
+                        grid: { color: this.theme === 'light' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)' },
+                        ticks: { color: this.theme === 'light' ? '#475569' : '#94a3b8', font: { size: 10 } }
                     },
                     x: {
                         grid: { display: false },
                         ticks: {
-                            color: '#94a3b8',
+                            color: this.theme === 'light' ? '#475569' : '#94a3b8',
                             font: { size: 10 },
                             maxRotation: 0,
                             autoSkip: true,
@@ -991,16 +1263,26 @@ class AccountsApp {
             (c.email && c.email.toLowerCase().includes(filter))
         );
 
+        const loadMoreBtn = document.getElementById('loadMoreClientsBtn');
         if (this.clients.length === 0) {
             document.querySelector('.data-table').classList.add('hidden');
             emptyState.classList.remove('hidden');
+            if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
             return;
         } else {
             document.querySelector('.data-table').classList.remove('hidden');
             emptyState.classList.add('hidden');
         }
 
-        filteredClients.forEach(client => {
+        if (filteredClients.length > this.clientsLimit) {
+            if (loadMoreBtn) loadMoreBtn.classList.remove('hidden');
+        } else {
+            if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+        }
+
+        const visibleClients = filteredClients.slice(0, this.clientsLimit);
+
+        visibleClients.forEach(client => {
             const balance = this.getClientBalance(client.id);
             const totalSales = client.total_debt;
             const totalPayments = client.total_payments;
@@ -1182,10 +1464,39 @@ class AccountsApp {
         const emptyState = document.getElementById('emptyTransactionsState');
         timeline.innerHTML = '';
 
+        const filterType = document.getElementById('profileTxFilterType').value;
+        const filterDate = document.getElementById('profileTxFilterDate').value;
+        const searchTerm = document.getElementById('profileTxSearch').value.toLowerCase();
+
         const clientUuid = String(client.uuid).toLowerCase();
-        const clientTxs = (this.transactions || [])
-            .filter(t => String(t.clientId).toLowerCase() === clientUuid)
-            .sort((a, b) => b.createdAt - a.createdAt);
+        let clientTxs = (this.transactions || [])
+            .filter(t => String(t.clientId).toLowerCase() === clientUuid);
+
+        // Apply type filter
+        if (filterType !== 'ALL') {
+            clientTxs = clientTxs.filter(t => t.type === filterType);
+        }
+
+        // Apply search filter
+        if (searchTerm) {
+            clientTxs = clientTxs.filter(t => (t.description || '').toLowerCase().includes(searchTerm));
+        }
+
+        // Apply date filter
+        if (filterDate !== 'ALL') {
+            const now = new Date();
+            let limitTimestamp = 0;
+            if (filterDate === 'TODAY') {
+                limitTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            } else if (filterDate === 'WEEK') {
+                limitTimestamp = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).getTime();
+            } else if (filterDate === 'MONTH') {
+                limitTimestamp = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+            }
+            clientTxs = clientTxs.filter(t => t.createdAt >= limitTimestamp);
+        }
+
+        clientTxs.sort((a, b) => b.createdAt - a.createdAt);
 
         if (clientTxs.length === 0) {
             emptyState.classList.remove('hidden');
@@ -1253,11 +1564,21 @@ class AccountsApp {
 
         allTxs.sort((a, b) => b.createdAt - a.createdAt);
 
+        const loadMoreBtn = document.getElementById('loadMoreTxBtn');
         if (allTxs.length === 0) {
             emptyState.classList.remove('hidden');
+            if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
         } else {
             emptyState.classList.add('hidden');
-            allTxs.forEach(tx => {
+
+            if (allTxs.length > this.txLimit) {
+                if (loadMoreBtn) loadMoreBtn.classList.remove('hidden');
+            } else {
+                if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+            }
+            const visibleTxs = allTxs.slice(0, this.txLimit);
+
+            visibleTxs.forEach(tx => {
                 const clientUuid = String(tx.clientId).toLowerCase();
                 const client = this.clients.find(c => String(c.uuid).toLowerCase() === clientUuid || String(c.id).toLowerCase() === clientUuid);
                 const clientName = client ? client.name : 'Cliente Eliminado/Desconocido';
@@ -1412,11 +1733,40 @@ class AccountsApp {
             }
 
             await this.saveData();
+
+            // Confetti if balance is zero after a payment
+            if (type === 'PAYMENT') {
+                const newBalance = this.getClientBalance(this.currentClientId);
+                if (newBalance <= 0) {
+                    this.triggerConfetti();
+                }
+            }
+
             this.closeTransactionModal();
         } catch (error) {
             console.error("Tx Submit Error:", error);
             this.showToast('Error al procesar la transacción', 'error');
         }
+    }
+
+    triggerConfetti() {
+        const duration = 3 * 1000;
+        const animationEnd = Date.now() + duration;
+        const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+        const randomInRange = (min, max) => Math.random() * (max - min) + min;
+
+        const interval = setInterval(() => {
+            const timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+                return clearInterval(interval);
+            }
+
+            const particleCount = 50 * (timeLeft / duration);
+            confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } });
+            confetti({ ...defaults, particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } });
+        }, 250);
     }
 
     sendWhatsApp() {

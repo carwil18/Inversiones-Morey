@@ -440,12 +440,90 @@ body {
     }
 }
 
+/* View Transitions */
+.view-section {
+    transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.view-section.fade-out {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.view-section.fade-in {
+    animation: fadeIn var(--transition-normal) forwards;
+}
+
+/* Skeleton Loaders */
+.skeleton {
+    background: linear-gradient(90deg,
+            rgba(255, 255, 255, 0.05) 25%,
+            rgba(255, 255, 255, 0.1) 50%,
+            rgba(255, 255, 255, 0.05) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes skeleton-loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+.skeleton-text {
+    height: 1rem;
+    margin-bottom: 0.5rem;
+    width: 100%;
+}
+
+.skeleton-title {
+    height: 2rem;
+    width: 60%;
+    margin-bottom: 1rem;
+}
+
+.skeleton-card {
+    height: 120px;
+    width: 100%;
+}
+
+.skeleton-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+}
+
 /* Dashboard Summaries */
 .summary-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+/* Adjustments for Category Chart */
+.chart-container-large {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+@media (max-width: 1024px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .summary-card {
@@ -1450,4 +1528,67 @@ select.select-sm {
         width: 95%;
         padding: 1.5rem;
     }
+}
+
+/* Light Theme */
+[data-theme="light"] {
+    --bg-primary: #f8fafc;
+    --bg-secondary: #ffffff;
+    --accent-blue: #2563eb;
+    --accent-blue-hover: #1d4ed8;
+    --accent-green: #059669;
+    --accent-red: #dc2626;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --border-color: rgba(0, 0, 0, 0.1);
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(0, 0, 0, 0.08);
+    --glass-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] body {
+    background-image:
+        radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 85% 30%, rgba(16, 185, 129, 0.05) 0%, transparent 50%);
+}
+
+[data-theme="light"] select option,
+[data-theme="light"] .nav-item:hover {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+[data-theme="light"] .rate-currency-switch,
+[data-theme="light"] .converter-currency-tabs,
+[data-theme="light"] .search-bar,
+[data-theme="light"] input[type="text"],
+[data-theme="light"] input[type="email"],
+[data-theme="light"] input[type="password"],
+[data-theme="light"] input[type="tel"],
+[data-theme="light"] input[type="number"],
+[data-theme="light"] select {
+    background: rgba(0, 0, 0, 0.03);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .table-container::-webkit-scrollbar-thumb,
+[data-theme="light"] .content-area::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+/* Loading State for Buttons */
+.btn.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.animate-spin {
+    animation: rotate 1s linear infinite;
 }
