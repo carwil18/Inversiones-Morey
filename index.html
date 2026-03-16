@@ -699,7 +699,11 @@
                 </div>
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary close-modal">Cancelar</button>
-                    <button type="submit" class="btn btn-primary" id="txSubmitBtn">Guardar</button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button type="submit" class="btn btn-primary" id="txSubmitBtn">Guardar</button>
+                        <button type="submit" class="btn btn-success" id="txSubmitAndAddAnotherBtn"
+                            style="background: var(--accent-green);">Guardar y añadir otra</button>
+                    </div>
                 </div>
             </form>
         </div>

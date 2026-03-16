@@ -187,7 +187,7 @@ class AccountsApp {
 
         document.getElementById('transactionForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            this.handleTransactionSubmit();
+            this.handleTransactionSubmit(e.submitter);
         });
 
         // Mobile Sidebar Toggle
@@ -1639,6 +1639,9 @@ class AccountsApp {
         }
 
         const modal = document.getElementById('transactionModal');
+        const addAnotherBtn = document.getElementById('txSubmitAndAddAnotherBtn');
+        if (addAnotherBtn) addAnotherBtn.style.display = 'block';
+
         modal.classList.remove('hidden');
         // Let reflow happen for animation
         setTimeout(() => modal.classList.add('active'), 10);
@@ -1686,9 +1689,12 @@ class AccountsApp {
         if (tx.type === 'PAYMENT' && tx.payment_method) {
             document.getElementById('txPaymentMethod').value = tx.payment_method;
         }
-    }
 
-    async handleTransactionSubmit() {
+        // Hide "Add Another" button when editing
+        const addAnotherBtn = document.getElementById('txSubmitAndAddAnotherBtn');
+        if (addAnotherBtn) addAnotherBtn.style.display = 'none';
+    }
+    async handleTransactionSubmit(submitterBtn) {
         const txId = document.getElementById('txId').value;
         const type = document.getElementById('txType').value;
         const amount = parseFloat(document.getElementById('txAmount').value);
@@ -1742,7 +1748,16 @@ class AccountsApp {
                 }
             }
 
-            this.closeTransactionModal();
+            if (submitterBtn && submitterBtn.id === 'txSubmitAndAddAnotherBtn') {
+                // Keep modal open, clear fields
+                document.getElementById('txId').value = '';
+                document.getElementById('txAmount').value = '';
+                document.getElementById('txDescription').value = '';
+                document.getElementById('txAmount').focus();
+            } else {
+                this.closeTransactionModal();
+            }
+
         } catch (error) {
             console.error("Tx Submit Error:", error);
             this.showToast('Error al procesar la transacción', 'error');
