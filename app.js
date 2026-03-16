@@ -25,6 +25,13 @@ class AccountsApp {
         this.init();
     }
 
+    escapeHTML(str) {
+        if (typeof str !== 'string') return str;
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
     async init() {
         this.applyTheme(this.theme);
         const rate = this.activeCurrency === 'USD' ? this.exchangeRate : this.exchangeRateEUR;
@@ -1218,7 +1225,7 @@ class AccountsApp {
             for (let [method, amount] of methodsSorted) {
                 pmBreakdownEl.innerHTML += `
                      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.25rem 0;">
-                         <span style="font-size: 0.85rem; color: var(--text-primary);"><i class="ph ph-wallet"></i> ${method}</span>
+                         <span style="font-size: 0.85rem; color: var(--text-primary);"><i class="ph ph-wallet"></i> ${this.escapeHTML(method)}</span>
                          <span style="font-weight: 500; font-size: 0.85rem; color: var(--accent-green);">${this.formatCurrency(amount)}</span>
                      </div>
                  `;
@@ -1377,18 +1384,18 @@ class AccountsApp {
             tr.innerHTML = `
                 <td>
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <div class="avatar" style="width:32px; height:32px; font-size:12px;">${this.getInitials(client.name)}</div>
+                        <div class="avatar" style="width:32px; height:32px; font-size:12px;">${this.escapeHTML(this.getInitials(client.name))}</div>
                         <div>
-                            <span style="font-weight:500; display:block;">${client.name}</span>
+                            <span style="font-weight:500; display:block;">${this.escapeHTML(client.name)}</span>
                             ${isMorose ? `<span class="morose-alert"><i class="ph ph-warning"></i> +1 mes sin abono</span>` : ''}
                         </div>
                     </div>
                 </td>
                 <td>
                     <div style="font-size:0.85rem; color:var(--text-secondary)">
-                        ${client.category ? `<span class="badge" style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:10px; margin-bottom:4px; display:inline-block;">${client.category}</span><br>` : ''}
-                        ${client.phone ? `<i class="ph ph-phone"></i> ${client.phone}<br>` : ''}
-                        ${client.email ? `<i class="ph ph-envelope"></i> ${client.email}` : ''}
+                        ${client.category ? `<span class="badge" style="background:rgba(255,255,255,0.1); padding:2px 6px; border-radius:4px; font-size:10px; margin-bottom:4px; display:inline-block;">${this.escapeHTML(client.category)}</span><br>` : ''}
+                        ${client.phone ? `<i class="ph ph-phone"></i> ${this.escapeHTML(client.phone)}<br>` : ''}
+                        ${client.email ? `<i class="ph ph-envelope"></i> ${this.escapeHTML(client.email)}` : ''}
                     </div>
                 </td>
                 <td style="color:var(--text-secondary)">${this.formatCurrency(totalSales)}</td>
@@ -1604,7 +1611,7 @@ class AccountsApp {
 
                 el.innerHTML = `
                     <div class="tx-info">
-                        <h4>${displayDesc}</h4>
+                        <h4>${this.escapeHTML(displayDesc)}</h4>
                         <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'}</span>
                     </div>
                     <div class="tx-actions">
@@ -1694,8 +1701,8 @@ class AccountsApp {
 
                 el.innerHTML = `
                     <div class="tx-info">
-                        <h4>${displayDesc}</h4>
-                        <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'} • <strong>${clientName}</strong></span>
+                        <h4>${this.escapeHTML(displayDesc)}</h4>
+                        <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'} • <strong>${this.escapeHTML(clientName)}</strong></span>
                     </div>
                     <div class="tx-actions">
                         <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
@@ -1974,9 +1981,9 @@ class AccountsApp {
             <div style="display: flex; margin-bottom: 30px;">
                 <div style="flex: 1;">
                     <h3 style="color: #0f172a; font-size: 16px; margin: 0 0 10px 0;">Datos del Cliente</h3>
-                    <p style="margin: 0; font-size: 14px; color: #334155;"><strong>Nombre:</strong> ${clientName}</p>
-                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #334155;"><strong>Teléfono:</strong> ${clientPhone}</p>
-                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #334155;"><strong>Dirección:</strong> ${clientAddress}</p>
+                    <p style="margin: 0; font-size: 14px; color: #334155;"><strong>Nombre:</strong> ${this.escapeHTML(clientName)}</p>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #334155;"><strong>Teléfono:</strong> ${this.escapeHTML(clientPhone)}</p>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #334155;"><strong>Dirección:</strong> ${this.escapeHTML(clientAddress)}</p>
                 </div>
             </div>
 
@@ -1989,7 +1996,7 @@ class AccountsApp {
                 </thead>
                 <tbody>
                     <tr>
-                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">${tx.description || (isSale ? 'Venta general' : 'Abono general')}</td>
+                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #334155;">${this.escapeHTML(tx.description || (isSale ? 'Venta general' : 'Abono general'))}</td>
                         <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e2e8f0; color: #334155; font-weight: bold;">${this.formatCurrency(tx.amount)}</td>
                     </tr>
                 </tbody>
