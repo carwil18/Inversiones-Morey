@@ -443,6 +443,10 @@
                                         <option value="WEEK">Últimos 7 días</option>
                                         <option value="MONTH">Este mes</option>
                                     </select>
+                                    <button class="btn btn-sm btn-secondary" onclick="app.exportTransactionsCSV(true)"
+                                        title="Exportar Transacciones del Cliente a CSV">
+                                        <i class="ph ph-file-csv"></i> Exportar CSV
+                                    </button>
                                 </div>
                             </div>
                             <div class="timeline" id="transactionsTimeline">
@@ -461,19 +465,23 @@
                     <div class="glass-card table-card">
                         <div class="card-header"
                             style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
-                            <h3>Historial Global de Transacciones</h3>
-                            <div style="display: flex; gap: 10px;">
-                                <select id="txFilterType" class="select-sm" style="width: auto;">
-                                    <option value="ALL">Todas las transacciones</option>
-                                    <option value="SALE">Solo Ventas (Deuda)</option>
-                                    <option value="PAYMENT">Solo Abonos</option>
+                            <h3>Historial de Movimientos</h3>
+                            <div style="display: flex; gap: 8px;">
+                                <select id="txFilterType" class="select-sm">
+                                    <option value="ALL">Todo</option>
+                                    <option value="SALE">Ventas</option>
+                                    <option value="PAYMENT">Abonos</option>
                                 </select>
-                                <select id="txFilterDate" class="select-sm" style="width: auto;">
-                                    <option value="ALL">Todo el tiempo</option>
+                                <select id="txFilterDate" class="select-sm">
+                                    <option value="ALL">Siempre</option>
                                     <option value="TODAY">Hoy</option>
-                                    <option value="WEEK">Últimos 7 días</option>
-                                    <option value="MONTH">Este mes</option>
+                                    <option value="WEEK">7 Días</option>
+                                    <option value="MONTH">Este Mes</option>
                                 </select>
+                                <button class="btn btn-sm btn-secondary" onclick="app.exportTransactionsCSV(false)"
+                                    title="Exportar Todo a CSV">
+                                    <i class="ph ph-file-csv"></i> Excel / CSV
+                                </button>
                             </div>
                         </div>
                         <div class="timeline" id="globalTransactionsTimeline">
@@ -606,6 +614,23 @@
                     <button type="submit" class="btn btn-primary btn-full" id="updatePwdBtn">Guardar</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="modal-overlay hidden">
+        <div class="glass-card modal-content" style="max-width:350px; text-align:center;">
+            <div style="margin-bottom:1rem; color:var(--accent-red); font-size:3rem;">
+                <i class="ph ph-warning-circle"></i>
+            </div>
+            <h3 style="margin-bottom:0.5rem;" id="confirmModalTitle">¿Estás seguro?</h3>
+            <p id="confirmModalMessage" style="color:var(--text-secondary); margin-bottom:1.5rem; font-size:0.9rem;">
+                Esta acción no se puede deshacer.
+            </p>
+            <div class="form-actions" style="justify-content:center;">
+                <button type="button" class="btn btn-secondary" id="confirmCancelBtn">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmAcceptBtn">Sí, confirmar</button>
+            </div>
         </div>
     </div>
 

@@ -52,6 +52,90 @@ class AccountsApp {
 
         this.fetchBCVRate(); // Sync on load
     }
+    async confirmAction(title, message, isDanger = true) {
+        return new Promise((resolve) => {
+            const modal = document.getElementById('confirmModal');
+            document.getElementById('confirmModalTitle').textContent = title;
+            document.getElementById('confirmModalMessage').textContent = message;
+
+            const acceptBtn = document.getElementById('confirmAcceptBtn');
+            const cancelBtn = document.getElementById('confirmCancelBtn');
+
+            if (isDanger) {
+                acceptBtn.className = 'btn btn-danger';
+            } else {
+                acceptBtn.className = 'btn btn-primary';
+            }
+
+            const cleanup = () => {
+                acceptBtn.removeEventListener('click', onAccept);
+                cancelBtn.removeEventListener('click', onCancel);
+                modal.classList.remove('active');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            };
+
+            const onAccept = () => { cleanup(); resolve(true); };
+            const onCancel = () => { cleanup(); resolve(false); };
+
+            acceptBtn.addEventListener('click', onAccept);
+            cancelBtn.addEventListener('click', onCancel);
+
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.add('active'), 10);
+        });
+    }
+
+    exportTransactionsCSV(clientOnly = false) {
+        let txsToExport = [];
+        if (clientOnly && this.currentClientId) {
+            const dbClient = this.clients.find(c => c.id === this.currentClientId);
+            txsToExport = this.transactions.filter(t => String(t.clientId).toLowerCase() === String(dbClient.uuid).toLowerCase());
+        } else {
+            txsToExport = [...this.transactions];
+        }
+
+        if (txsToExport.length === 0) {
+            this.showToast('No hay transacciones para exportar', 'info');
+            return;
+        }
+
+        txsToExport.sort((a, b) => b.createdAt - a.createdAt);
+
+        const headers = ['Fecha', 'Tipo', 'Cliente', 'Descripción', 'Monto (USD)', 'Monto VEF Historico', 'Método de Pago'];
+        const csvRows = [headers.join(',')];
+
+        txsToExport.forEach(tx => {
+            const clientUuid = String(tx.clientId).toLowerCase();
+            const client = this.clients.find(c => String(c.uuid).toLowerCase() === clientUuid || String(c.id).toLowerCase() === clientUuid);
+            const clientName = client ? client.name.replace(/,/g, '') : 'Desconocido';
+
+            let displayDesc = (tx.description || '').replace(/,/g, ' ');
+            let historicalRate = this.exchangeRate;
+            if (displayDesc.includes('| Tasa:')) {
+                const parts = displayDesc.split('| Tasa:');
+                displayDesc = parts[0].trim();
+                historicalRate = parseFloat(parts[1].trim()) || this.exchangeRate;
+            }
+
+            const vefAmount = (tx.amount * historicalRate).toFixed(2);
+            const dateStr = new Date(tx.createdAt).toLocaleString().replace(/,/g, '');
+            const typeStr = tx.type === 'SALE' ? 'Venta (Deuda)' : 'Abono';
+            const pm = tx.payment_method || 'N/A';
+
+            csvRows.push(`${dateStr},${typeStr},${clientName},${displayDesc},${tx.amount},${vefAmount},${pm}`);
+        });
+
+        const csvString = "\uFEFF" + csvRows.join('\n'); // Add BOM for Excel UTF-8
+        const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = clientOnly ? `Historial_Cliente_${new Date().getTime()}.csv` : `Historial_General_${new Date().getTime()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        this.showToast('Exportación descargada con éxito', 'success');
+    }
 
     bindEvents() {
         // Theme Toggle
@@ -1397,7 +1481,8 @@ class AccountsApp {
         const client = this.getClient(this.currentClientId);
         if (!client) return;
 
-        if (!confirm(`¿Estás seguro de que deseas eliminar permanentemente a "${client.name}" y todo su historial de transacciones? Esta acción no se puede deshacer.`)) {
+        const confirm = await this.confirmAction('Eliminar Cliente', `¿Estás seguro de que deseas eliminar permanentemente a "${client.name}" y todo su historial de transacciones? Esta acción no se puede deshacer.`);
+        if (!confirm) {
             return;
         }
 
@@ -1507,15 +1592,25 @@ class AccountsApp {
                 const el = document.createElement('div');
                 el.className = `tx-item ${isSale ? 'sale' : 'payment'}`;
 
+                let displayDesc = tx.description || (isSale ? 'Venta' : 'Abono');
+                let historicalRate = this.exchangeRate;
+                if (displayDesc.includes('| Tasa:')) {
+                    const parts = displayDesc.split('| Tasa:');
+                    displayDesc = parts[0].trim();
+                    historicalRate = parseFloat(parts[1].trim()) || historicalRate;
+                }
+                const txVefVal = tx.amount * historicalRate;
+                const formattedVef = new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(txVefVal);
+
                 el.innerHTML = `
                     <div class="tx-info">
-                        <h4>${tx.description || (isSale ? 'Venta' : 'Abono')}</h4>
+                        <h4>${displayDesc}</h4>
                         <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'}</span>
                     </div>
                     <div class="tx-actions">
                         <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
                             <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${formattedVef}</div>
                         </div>
                         <button class="icon-btn-sm" onclick="app.openEditTransactionModal('${tx.id}')" title="Editar Transacción">
                             <i class="ph ph-pencil-simple"></i>
@@ -1587,15 +1682,25 @@ class AccountsApp {
                 const el = document.createElement('div');
                 el.className = `tx-item ${isSale ? 'sale' : 'payment'}`;
 
+                let displayDesc = tx.description || (isSale ? 'Venta' : 'Abono');
+                let historicalRate = this.exchangeRate;
+                if (displayDesc.includes('| Tasa:')) {
+                    const parts = displayDesc.split('| Tasa:');
+                    displayDesc = parts[0].trim();
+                    historicalRate = parseFloat(parts[1].trim()) || historicalRate;
+                }
+                const txVefVal = tx.amount * historicalRate;
+                const formattedVef = new Intl.NumberFormat('es-VE', { style: 'currency', currency: 'VES' }).format(txVefVal);
+
                 el.innerHTML = `
                     <div class="tx-info">
-                        <h4>${tx.description || (isSale ? 'Venta' : 'Abono')}</h4>
+                        <h4>${displayDesc}</h4>
                         <span>${this.formatDate(tx.createdAt)} • ${isSale ? 'Venta (Deuda)' : 'Abono'} • <strong>${clientName}</strong></span>
                     </div>
                     <div class="tx-actions">
                         <div class="tx-amount ${isSale ? 'text-danger' : 'text-success'}" style="text-align: right;">
                             <div>${isSale ? '+' : '-'}${this.formatCurrency(tx.amount)}</div>
-                            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${this.formatVEF(tx.amount)}</div>
+                            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">${formattedVef}</div>
                         </div>
                         <button class="icon-btn-sm" onclick="app.openEditTransactionModal('${tx.id}')" title="Editar Transacción">
                             <i class="ph ph-pencil-simple"></i>
@@ -1654,7 +1759,8 @@ class AccountsApp {
     }
 
     async deleteTransaction(txId) {
-        if (!confirm('¿Estás seguro de que deseas eliminar esta transacción? Esta acción afectará el saldo del cliente.')) return;
+        const confirm = await this.confirmAction('Eliminar Transacción', '¿Estás seguro de que deseas eliminar esta transacción? Esta acción afectará el saldo del cliente y no se puede deshacer.');
+        if (!confirm) return;
 
         try {
             const { error } = await this.supabase.from('transactions').delete().eq('id', txId).eq('user_id', this.user.id);
@@ -1679,7 +1785,12 @@ class AccountsApp {
         document.getElementById('txId').value = tx.local_id || tx.id;
         document.getElementById('txModalTitle').textContent = tx.type === 'SALE' ? 'Editar Venta' : 'Editar Abono';
         document.getElementById('txAmount').value = tx.amount;
-        document.getElementById('txDescription').value = tx.description;
+
+        let displayDesc = tx.description || '';
+        if (displayDesc.includes('| Tasa:')) {
+            displayDesc = displayDesc.split('| Tasa:')[0].trim();
+        }
+        document.getElementById('txDescription').value = displayDesc;
 
         // Date handling
         const d = new Date(tx.createdAt);
@@ -1711,11 +1822,17 @@ class AccountsApp {
             return;
         }
 
+        const activeRate = this.activeCurrency === 'USD' ? this.exchangeRate : this.exchangeRateEUR;
+        let descriptionToSave = document.getElementById('txDescription').value.trim();
+        if (!descriptionToSave.includes('| Tasa:')) {
+            descriptionToSave += ' | Tasa: ' + activeRate;
+        }
+
         const payload = {
             client_id: dbClient.uuid,
             type,
             amount,
-            description,
+            description: descriptionToSave,
             payment_method: paymentMethod,
             created_at: txDate.toISOString(),
             user_id: this.user.id
