@@ -32,6 +32,29 @@ class AccountsApp {
         return div.innerHTML;
     }
 
+    animateValue(id, start, end, duration, isCurrency = false) {
+        const obj = document.getElementById(id);
+        if (!obj) return;
+        
+        let startTimestamp = null;
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const current = progress * (end - start) + start;
+            
+            if (isCurrency) {
+                obj.textContent = this.formatCurrency(current);
+            } else {
+                obj.textContent = Math.floor(current);
+            }
+
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
     async init() {
         this.applyTheme(this.theme);
         const rate = this.activeCurrency === 'USD' ? this.exchangeRate : this.exchangeRateEUR;
@@ -300,6 +323,18 @@ class AccountsApp {
         if (openSidebarBtn) openSidebarBtn.addEventListener('click', () => toggleSidebar());
         if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', () => toggleSidebar(true));
         if (sidebarOverlay) sidebarOverlay.addEventListener('click', () => toggleSidebar(true));
+
+        // Mobile Bottom Nav Binding
+        document.querySelectorAll('.mobile-nav-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetId = e.currentTarget.dataset.target;
+                if (targetId) {
+                    this.switchView(targetId);
+                    document.querySelectorAll('.mobile-nav-item').forEach(i => i.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                }
+            });
+        });
 
         // Auto-close sidebar on mobile when navigating
         document.querySelectorAll('.nav-item').forEach(btn => {
@@ -987,6 +1022,11 @@ class AccountsApp {
 
         this.currentViewId = viewId;
 
+        // Update Mobile Nav Active State
+        document.querySelectorAll('.mobile-nav-item').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.target === viewId);
+        });
+
         // Header and Specific actions
         const topHeaderTitle = document.querySelector('.top-header h1');
 
@@ -1043,8 +1083,8 @@ class AccountsApp {
             totalSystemDebt += this.getClientBalance(c.id);
         });
 
-        document.getElementById('totalClientsCount').textContent = totalClients;
-        document.getElementById('totalDebtAmount').textContent = this.formatCurrency(totalSystemDebt);
+        this.animateValue('totalClientsCount', 0, totalClients, 800);
+        this.animateValue('totalDebtAmount', 0, totalSystemDebt, 1000, true);
         document.getElementById('totalDebtAmountVEF').textContent = this.formatVEF(totalSystemDebt);
 
         // This Month's collected amount
@@ -1054,12 +1094,35 @@ class AccountsApp {
             .filter(t => t.type === 'PAYMENT' && t.createdAt >= startOfMonth)
             .reduce((acc, t) => acc + t.amount, 0);
 
-        document.getElementById('totalMonthCollected').textContent = this.formatCurrency(monthPayments);
+        this.animateValue('totalMonthCollected', 0, monthPayments, 1000, true);
         document.getElementById('totalMonthCollectedVEF').textContent = this.formatVEF(monthPayments);
 
         this.renderDailyChart();
         this.renderCategoryChart();
         this.renderAgingReport();
+        this.generateSmartInsights(totalSystemDebt, monthPayments);
+    }
+
+    generateSmartInsights(totalDebt, monthCollected) {
+        const insightSection = document.getElementById('insightSection');
+        const insightText = document.getElementById('insightText');
+        if (!insightSection || !insightText) return;
+
+        let insight = "";
+        const moroseCount = this.clients.filter(c => this.isClientMorose(c.id)).length;
+
+        if (moroseCount > 5) {
+            insight = `Tienes ${moroseCount} clientes con más de un mes de retraso. Se recomienda enviar recordatorios por WhatsApp.`;
+        } else if (totalDebt > 500 && monthCollected < totalDebt * 0.2) {
+            insight = `La deuda global es alta (${this.formatCurrency(totalDebt)}). Considera ofrecer planes de pago para aumentar la liquidez.`;
+        } else if (monthCollected > 0) {
+            insight = `¡Buen trabajo! Has cobrado ${this.formatCurrency(monthCollected)} este mes. El flujo de caja está saludable.`;
+        } else {
+            insight = "Día tranquilo en cobranzas. Buen momento para revisar expedientes y organizar tu agenda.";
+        }
+
+        insightText.textContent = insight;
+        insightSection.classList.remove('hidden');
     }
 
     renderCategoryChart() {

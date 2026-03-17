@@ -29,6 +29,10 @@
 </head>
 
 <body>
+    <!-- Background Decor -->
+    <div class="bg-glow-orb orb-1"></div>
+    <div class="bg-glow-orb orb-2"></div>
+
     <!-- Auth Overlay -->
     <div id="auth-overlay" class="auth-overlay">
         <div class="glass-card auth-card">
@@ -186,6 +190,21 @@
                                 <p>Cobrado Este Mes</p>
                                 <h3 id="totalMonthCollected">$0.00</h3>
                                 <p class="text-sm currency-vef" id="totalMonthCollectedVEF">Bs. 0,00</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Insight Section -->
+                    <div id="insightSection" class="hidden" style="margin-bottom: 2rem;">
+                        <div class="glass-card" style="padding: 1.25rem; border-left: 4px solid var(--accent-blue); background: linear-gradient(90deg, rgba(59, 130, 246, 0.1), transparent);">
+                            <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                <div style="background: var(--accent-blue); color: white; width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                    <i class="ph ph-sparkle"></i>
+                                </div>
+                                <div>
+                                    <h4 style="font-size: 0.9rem; margin-bottom: 2px;">Smart Insight</h4>
+                                    <p id="insightText" style="font-size: 0.85rem; color: var(--text-secondary);">Analizando tus cobranzas...</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -748,7 +767,26 @@
         </div>
     </div>
 
-    <!-- Toast Notification -->
+    <!-- Mobile Bottom Navigation -->
+    <nav class="mobile-bottom-nav">
+        <button class="mobile-nav-item active" data-target="dashboard-view">
+            <i class="ph ph-squares-four"></i>
+            <span>Inicio</span>
+        </button>
+        <button class="mobile-nav-item" data-target="clients-view">
+            <i class="ph ph-users"></i>
+            <span>Clientes</span>
+        </button>
+        <button class="mobile-nav-item" data-target="transactions-view">
+            <i class="ph ph-receipt"></i>
+            <span>Historial</span>
+        </button>
+        <button class="mobile-nav-item" data-target="converter-view">
+            <i class="ph ph-arrows-left-right"></i>
+            <span>Conversor</span>
+        </button>
+    </nav>
+
     <div id="toast" class="toast hidden">
         <i class="ph ph-check-circle toast-icon"></i>
         <span id="toastMessage">Operación exitosa</span>
