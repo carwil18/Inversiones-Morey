@@ -1590,6 +1590,23 @@ class AccountsApp {
 
         clientTxs.sort((a, b) => b.createdAt - a.createdAt);
 
+        // Update Filtered Total
+        const totalFiltered = clientTxs.reduce((acc, tx) => acc + tx.amount, 0);
+        const totalEl = document.getElementById('profileTxTotal');
+        const totalValEl = document.getElementById('profileTxTotalValue');
+        const totalVefEl = document.getElementById('profileTxTotalVEF');
+
+        const isFiltered = filterType !== 'ALL' || filterDate !== 'ALL' || searchTerm;
+        if (totalEl && totalValEl && totalVefEl) {
+            if (isFiltered && clientTxs.length > 0) {
+                totalEl.classList.remove('hidden');
+                totalValEl.textContent = this.formatCurrency(totalFiltered);
+                totalVefEl.textContent = `(${this.formatVEF(totalFiltered)})`;
+            } else {
+                totalEl.classList.add('hidden');
+            }
+        }
+
         if (clientTxs.length === 0) {
             emptyState.classList.remove('hidden');
         } else {
@@ -1665,6 +1682,23 @@ class AccountsApp {
         }
 
         allTxs.sort((a, b) => b.createdAt - a.createdAt);
+
+        // Update Filtered Total (Global)
+        const totalFiltered = allTxs.reduce((acc, tx) => acc + tx.amount, 0);
+        const totalEl = document.getElementById('globalTxTotal');
+        const totalValEl = document.getElementById('globalTxTotalValue');
+        const totalVefEl = document.getElementById('globalTxTotalVEF');
+
+        const isFiltered = typeFilter !== 'ALL' || dateFilter !== 'ALL';
+        if (totalEl && totalValEl && totalVefEl) {
+            if (isFiltered && allTxs.length > 0) {
+                totalEl.classList.remove('hidden');
+                totalValEl.textContent = this.formatCurrency(totalFiltered);
+                totalVefEl.textContent = `(${this.formatVEF(totalFiltered)})`;
+            } else {
+                totalEl.classList.add('hidden');
+            }
+        }
 
         const loadMoreBtn = document.getElementById('loadMoreTxBtn');
         if (allTxs.length === 0) {

@@ -449,6 +449,13 @@
                                     </button>
                                 </div>
                             </div>
+                            <!-- Filtered Total Bar -->
+                            <div id="profileTxTotal" class="filtered-total-bar hidden" style="margin: 0 1rem 1rem 1rem; display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: rgba(59, 130, 246, 0.05); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: 12px;">
+                                <i class="ph ph-info" style="color: var(--accent-blue);"></i>
+                                <span style="font-size: 0.9rem; color: var(--text-secondary);">Total Filtrado:</span>
+                                <strong id="profileTxTotalValue" style="font-size: 1.1rem; color: var(--accent-blue);">$0.00</strong>
+                                <span class="text-sm" id="profileTxTotalVEF" style="color: var(--text-muted); font-size: 0.8rem;">(Bs. 0,00)</span>
+                            </div>
                             <div class="timeline" id="transactionsTimeline">
                                 <!-- Transactions injected here -->
                             </div>
@@ -483,6 +490,13 @@
                                     <i class="ph ph-file-csv"></i> Excel / CSV
                                 </button>
                             </div>
+                        </div>
+                        <!-- Filtered Total Bar (Global) -->
+                        <div id="globalTxTotal" class="filtered-total-bar hidden" style="margin: 0 1.5rem 1rem 1.5rem; display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; background: rgba(59, 130, 246, 0.05); border: 1px dashed rgba(59, 130, 246, 0.3); border-radius: 12px;">
+                            <i class="ph ph-info" style="color: var(--accent-blue);"></i>
+                            <span style="font-size: 0.9rem; color: var(--text-secondary);">Total Filtrado:</span>
+                            <strong id="globalTxTotalValue" style="font-size: 1.1rem; color: var(--accent-blue);">$0.00</strong>
+                            <span class="text-sm" id="globalTxTotalVEF" style="color: var(--text-muted); font-size: 0.8rem;">(Bs. 0,00)</span>
                         </div>
                         <div class="timeline" id="globalTransactionsTimeline">
                             <!-- Transactions injected here -->
