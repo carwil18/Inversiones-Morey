@@ -298,9 +298,33 @@
                         <div class="card-header"
                             style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
                             <h3>Mis Clientes</h3>
-                            <div class="search-bar">
-                                <i class="ph ph-magnifying-glass"></i>
-                                <input type="text" id="globalSearchInput" placeholder="Buscar cliente...">
+                            <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                <select id="clientCategoryFilter" class="select-sm" style="width: auto; min-width: 150px;">
+                                    <option value="ALL">Todas las categorías</option>
+                                    <option value="Administración">Administración</option>
+                                    <option value="Ambulatorio">Ambulatorio</option>
+                                    <option value="Bienestar Social">Bienestar Social</option>
+                                    <option value="Caja">Caja</option>
+                                    <option value="Consejo Municipal">Consejo Municipal</option>
+                                    <option value="Consultoría Jurídica">Consultoría Jurídica</option>
+                                    <option value="Contraloría">Contraloría</option>
+                                    <option value="Epidemiología">Epidemiología</option>
+                                    <option value="Gobernación">Gobernación</option>
+                                    <option value="HMNT">HMNT</option>
+                                    <option value="Hospital">Hospital</option>
+                                    <option value="INSA Monagas">INSA Monagas</option>
+                                    <option value="José Tadeo Monagas">José Tadeo Monagas</option>
+                                    <option value="Libertad">Libertad</option>
+                                    <option value="Planificación">Planificación</option>
+                                    <option value="Proveeduría">Proveeduría</option>
+                                    <option value="RRHH">RRHH</option>
+                                    <option value="Otros">Otros</option>
+                                    <option value="Sin Categoría">Sin Categoría</option>
+                                </select>
+                                <div class="search-bar">
+                                    <i class="ph ph-magnifying-glass"></i>
+                                    <input type="text" id="globalSearchInput" placeholder="Buscar cliente...">
+                                </div>
                             </div>
                         </div>
                         <div class="table-container">

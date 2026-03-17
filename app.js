@@ -197,11 +197,19 @@ class AccountsApp {
             });
         });
 
-        // Search
+        // Search & Category Filter
         document.getElementById('globalSearchInput').addEventListener('input', (e) => {
             this.clientsLimit = 30;
             this.renderClientsTable(e.target.value);
         });
+
+        const categoryFilter = document.getElementById('clientCategoryFilter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', () => {
+                this.clientsLimit = 30;
+                this.renderClientsTable(document.getElementById('globalSearchInput').value);
+            });
+        }
 
         // Logout
         document.getElementById('logoutBtn').addEventListener('click', () => this.handleLogout());
@@ -1412,10 +1420,16 @@ class AccountsApp {
         tbody.innerHTML = '';
 
         const filter = searchTerm.toLowerCase();
-        const filteredClients = this.clients.filter(c =>
-            c.name.toLowerCase().includes(filter) ||
-            (c.email && c.email.toLowerCase().includes(filter))
-        );
+        const categoryFilter = document.getElementById('clientCategoryFilter')?.value || 'ALL';
+
+        const filteredClients = this.clients.filter(c => {
+            const matchesSearch = c.name.toLowerCase().includes(filter) ||
+                                 (c.email && c.email.toLowerCase().includes(filter));
+            
+            const matchesCategory = categoryFilter === 'ALL' || (c.category === categoryFilter);
+
+            return matchesSearch && matchesCategory;
+        });
 
         const loadMoreBtn = document.getElementById('loadMoreClientsBtn');
         if (this.clients.length === 0) {
