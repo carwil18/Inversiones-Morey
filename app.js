@@ -1591,13 +1591,15 @@ class AccountsApp {
         clientTxs.sort((a, b) => b.createdAt - a.createdAt);
 
         // Update Filtered Total
-        const totalFiltered = clientTxs.reduce((acc, tx) => acc + tx.amount, 0);
+        const totalFiltered = filterType === 'ALL' ? 0 : clientTxs.reduce((acc, tx) => acc + tx.amount, 0);
         const totalEl = document.getElementById('profileTxTotal');
         const totalValEl = document.getElementById('profileTxTotalValue');
         const totalVefEl = document.getElementById('profileTxTotalVEF');
 
         const isFiltered = filterType !== 'ALL' || filterDate !== 'ALL' || searchTerm;
         if (totalEl && totalValEl && totalVefEl) {
+            // If ALL is selected, original requirement says total should be 0. 
+            // We show the bar if there's any active filter, but with the value 0 if type is ALL.
             if (isFiltered && clientTxs.length > 0) {
                 totalEl.classList.remove('hidden');
                 totalValEl.textContent = this.formatCurrency(totalFiltered);
@@ -1684,7 +1686,7 @@ class AccountsApp {
         allTxs.sort((a, b) => b.createdAt - a.createdAt);
 
         // Update Filtered Total (Global)
-        const totalFiltered = allTxs.reduce((acc, tx) => acc + tx.amount, 0);
+        const totalFiltered = typeFilter === 'ALL' ? 0 : allTxs.reduce((acc, tx) => acc + tx.amount, 0);
         const totalEl = document.getElementById('globalTxTotal');
         const totalValEl = document.getElementById('globalTxTotalValue');
         const totalVefEl = document.getElementById('globalTxTotalVEF');
