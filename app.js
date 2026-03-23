@@ -312,6 +312,31 @@ class AccountsApp {
             this.handleTransactionSubmit(e.submitter);
         });
 
+        // Items logic for Sales
+        const itemsContainer = document.getElementById('txItemsContainer');
+        if (itemsContainer) {
+            itemsContainer.addEventListener('input', (e) => {
+                if (e.target.classList.contains('item-qty') || e.target.classList.contains('item-price')) {
+                    const row = e.target.closest('.item-row');
+                    const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                    const price = parseFloat(row.querySelector('.item-price').value) || 0;
+                    const subtotal = qty * price;
+                    row.querySelector('.item-subtotal').textContent = '$' + subtotal.toFixed(2);
+
+                    // Update total amount in parent form
+                    let total = 0;
+                    itemsContainer.querySelectorAll('.item-row').forEach(r => {
+                        const q = parseFloat(r.querySelector('.item-qty').value) || 0;
+                        const p = parseFloat(r.querySelector('.item-price').value) || 0;
+                        total += q * p;
+                    });
+                    if (total > 0) {
+                        document.getElementById('txAmount').value = total.toFixed(2);
+                    }
+                }
+            });
+        }
+
         // Mobile Sidebar Toggle
         const openSidebarBtn = document.getElementById('openSidebarBtn');
         const closeSidebarBtn = document.getElementById('closeSidebarBtn');
@@ -598,18 +623,32 @@ class AccountsApp {
         const localTransactions = JSON.parse(localStorage.getItem('ar_transactions')) || [];
 
         try {
-            const { data: rawClients, error: cErr } = await this.supabase
+            let { data: rawClients, error: cErr } = await this.supabase
                 .from('clients')
                 .select('*')
                 .eq('user_id', this.user.id);
 
-            const { data: rawTransactions, error: tErr } = await this.supabase
+            let { data: rawTransactions, error: tErr } = await this.supabase
                 .from('transactions')
                 .select('*')
                 .eq('user_id', this.user.id);
 
             if (cErr) throw cErr;
             if (tErr) throw tErr;
+
+            // Migration logic: If cloud is empty but local storage has data
+            if ((!rawClients || rawClients.length === 0) && localClients.length > 0) {
+                console.log("Migrating local data to cloud...");
+                await this.migrateLocalToSupabase(localClients, localTransactions);
+                // After migration, re-fetch to get the proper UUIDs
+                const { data: mc } = await this.supabase.from('clients').select('*').eq('user_id', this.user.id);
+                const { data: mt } = await this.supabase.from('transactions').select('*').eq('user_id', this.user.id);
+                rawClients = mc || [];
+                rawTransactions = mt || [];
+                // Clear local storage to prevent double migration
+                localStorage.removeItem('ar_clients');
+                localStorage.removeItem('ar_transactions');
+            }
 
             if (rawClients) {
                 this.clients = rawClients.map(c => ({
@@ -1867,6 +1906,13 @@ class AccountsApp {
         const addAnotherBtn = document.getElementById('txSubmitAndAddAnotherBtn');
         if (addAnotherBtn) addAnotherBtn.style.display = 'block';
 
+        const itemsSection = document.getElementById('txItemsSection');
+        if (itemsSection) {
+            itemsSection.style.display = type === 'SALE' ? 'block' : 'none';
+            // Clear subtotal values in rows
+            document.querySelectorAll('.item-subtotal').forEach(s => s.textContent = '$0.00');
+        }
+
         modal.classList.remove('hidden');
         // Let reflow happen for animation
         setTimeout(() => modal.classList.add('active'), 10);
@@ -1944,6 +1990,26 @@ class AccountsApp {
 
         const activeRate = this.activeCurrency === 'USD' ? this.exchangeRate : this.exchangeRateEUR;
         let descriptionToSave = document.getElementById('txDescription').value.trim();
+
+        // If it's a SALE, check for detailed items
+        if (type === 'SALE') {
+            const items = [];
+            const itemsContainer = document.getElementById('txItemsContainer');
+            if (itemsContainer) {
+                itemsContainer.querySelectorAll('.item-row').forEach(row => {
+                    const desc = row.querySelector('.item-desc').value.trim();
+                    const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+                    const price = parseFloat(row.querySelector('.item-price').value) || 0;
+                    if (desc && qty > 0) {
+                        items.push(`${qty}x ${desc} ($${price.toFixed(2)})`);
+                    }
+                });
+            }
+            if (items.length > 0) {
+                descriptionToSave += ' (' + items.join(', ') + ')';
+            }
+        }
+
         if (!descriptionToSave.includes('| Tasa:')) {
             descriptionToSave += ' | Tasa: ' + activeRate;
         }
@@ -2191,7 +2257,6 @@ class AccountsApp {
         });
 
         const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('url');
         const url = URL.createObjectURL(blob);
 
         const a = document.createElement('a');
