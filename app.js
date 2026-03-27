@@ -213,6 +213,8 @@ class AccountsApp {
 
         // Logout
         document.getElementById('logoutBtn').addEventListener('click', () => this.handleLogout());
+        const logoutBtnMobile = document.getElementById('logoutBtnMobile');
+        if (logoutBtnMobile) logoutBtnMobile.addEventListener('click', () => this.handleLogout());
 
         // Exchange Rate
         document.getElementById('exchangeRateInput').addEventListener('change', (e) => {

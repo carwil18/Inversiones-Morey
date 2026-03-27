@@ -132,6 +132,7 @@ body {
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     flex-shrink: 0;
+    overflow-y: auto;
 }
 
 .sidebar-header {
@@ -184,6 +185,30 @@ body {
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sidebar-footer p {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 0.5rem;
+}
+
+.sidebar-footer .btn {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0.875rem 1rem;
+    border-radius: var(--radius-md);
+    font-size: 0.95rem;
+}
+
 /* Mobile Bottom Nav (Shared state) */
 .mobile-bottom-nav {
     display: none;
@@ -206,9 +231,44 @@ body {
     flex-wrap: wrap;
 }
 
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-grow: 1;
+}
+
 .top-header h1 {
     font-size: 1.5rem;
     font-weight: 600;
+}
+
+.show-mobile {
+    display: none !important;
+}
+
+.btn-icon-logout {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--accent-red);
+    border: none;
+    border-radius: 12px;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: auto;
+    transition: var(--transition-fast);
+}
+
+.btn-icon-logout:hover {
+    background: var(--accent-red);
+    color: white;
+}
+
+.btn-icon-logout i {
+    font-size: 1.4rem;
 }
 
 .search-bar {
@@ -755,6 +815,28 @@ body {
 .btn-sm {
     padding: 0.35rem 0.75rem;
     font-size: 0.875rem;
+}
+
+.btn-danger {
+    color: var(--accent-red) !important;
+}
+
+.btn-danger:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.logout-btn {
+    border-radius: var(--radius-md);
+    font-weight: 600;
+}
+
+.logout-btn:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: var(--accent-red) !important;
+}
+
+.logout-btn i {
+    font-size: 1.25rem;
 }
 
 /* Forms */
@@ -1561,6 +1643,10 @@ select.select-sm {
 
     .hide-mobile {
         display: none !important;
+    }
+
+    .show-mobile {
+        display: flex !important;
     }
 
     .btn-icon-menu {
