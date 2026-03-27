@@ -1056,15 +1056,17 @@ select.select-sm {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(8px);
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* Start from top to handle scrolling better */
     justify-content: center;
-    z-index: 100;
+    z-index: 1000; /* Higher z-index to be above everything */
     opacity: 0;
     visibility: hidden;
     transition: var(--transition-normal);
+    overflow-y: auto; /* Enable scroll if content is too tall */
+    padding: 2rem 1rem; /* Space for modal breathing room */
 }
 
 .modal-overlay.active {
@@ -1074,10 +1076,26 @@ select.select-sm {
 
 .modal-content {
     width: 100%;
-    max-width: 450px;
-    padding: 2rem;
+    max-width: 500px;
+    padding: 2.5rem;
     transform: translateY(20px);
     transition: var(--transition-normal);
+    position: relative;
+    margin-bottom: 2rem; /* Buffer at bottom during scroll */
+}
+
+/* Specific larger width for the transaction modal to fit the items grid */
+#transactionModal .modal-content {
+    max-width: 750px;
+}
+
+#updatePwdModalContent {
+    max-width: 400px;
+}
+
+#confirmModalContent {
+    max-width: 350px;
+    text-align: center;
 }
 
 .modal-overlay.active .modal-content {
@@ -1101,6 +1119,72 @@ select.select-sm {
 
 .icon-btn:hover {
     color: white;
+}
+
+/* Items Grid Styles for Transaction Modal */
+.items-grid-header {
+    display: grid;
+    grid-template-columns: 2fr 0.6fr 1fr 1fr;
+    gap: 1rem;
+    padding: 0 0.5rem 0.5rem 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.items-grid-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    max-height: 250px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.item-row {
+    display: grid;
+    grid-template-columns: 2fr 0.6fr 1fr 1fr;
+    gap: 1rem;
+    align-items: center;
+}
+
+.item-row input {
+    padding: 0.5rem 0.75rem !important;
+    font-size: 0.9rem !important;
+}
+
+.item-subtotal {
+    font-weight: 600;
+    color: var(--accent-blue);
+    font-size: 0.9rem;
+    text-align: right;
+}
+
+@media (max-width: 600px) {
+    .items-grid-header {
+        display: none;
+    }
+    
+    .item-row {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        background: rgba(255, 255, 255, 0.02);
+        padding: 1rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-color);
+    }
+    
+    .item-desc {
+        grid-column: span 2;
+    }
+    
+    .item-subtotal {
+        grid-column: span 2;
+        text-align: right;
+        padding-top: 5px;
+        border-top: 1px dashed var(--border-color);
+    }
 }
 
 /* Toast */
@@ -1633,8 +1717,18 @@ select.select-sm {
     }
 
     .modal-content {
-        width: 95%;
+        width: 100%;
         padding: 1.5rem;
+        margin-top: 0;
+        border-radius: var(--radius-lg);
+    }
+
+    #transactionModal .modal-content {
+        max-width: 100%;
+    }
+    
+    .modal-header h3 {
+        font-size: 1.1rem;
     }
 }
 
