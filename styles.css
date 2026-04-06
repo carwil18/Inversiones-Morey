@@ -392,6 +392,16 @@ body {
     filter: drop-shadow(0 2px 4px rgba(16, 185, 129, 0.2));
 }
 
+#rateSparkline path {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+    animation: drawPath 2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes drawPath {
+    to { stroke-dashoffset: 0; }
+}
+
 .sync-btn-modern {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);

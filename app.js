@@ -1047,6 +1047,17 @@ class AccountsApp {
     // --- Navigation & Views ---
 
     switchView(viewId) {
+        this.vibrate([20]);
+        if (document.startViewTransition) {
+            document.startViewTransition(() => {
+                this._executeSwitchView(viewId);
+            });
+        } else {
+            this._executeSwitchView(viewId);
+        }
+    }
+
+    _executeSwitchView(viewId) {
         // Update Nav Active State
         document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
         const navBtn = document.querySelector(`.nav-item[data-target="${viewId}"]`);
@@ -1433,6 +1444,12 @@ class AccountsApp {
 
     formatShortDate(date) {
         return new Intl.DateTimeFormat('es-VE', { month: 'short', day: 'numeric' }).format(date);
+    }
+
+    vibrate(pattern = [50]) {
+        if (navigator.vibrate) {
+            try { navigator.vibrate(pattern); } catch (e) {}
+        }
     }
 
     isClientMorose(clientId) {
@@ -1973,6 +1990,120 @@ class AccountsApp {
         const addAnotherBtn = document.getElementById('txSubmitAndAddAnotherBtn');
         if (addAnotherBtn) addAnotherBtn.style.display = 'none';
     }
+    sendWhatsApp() {
+        const client = this.getClient(this.currentClientId);
+        if (!client) return;
+
+        const balance = this.getClientBalance(client.id);
+        if (balance <= 0) {
+            this.showToast('El cliente no tiene deudas pendientes.', 'info');
+            return;
+        }
+
+        const phone = client.phone ? client.phone.replace(/\D/g, '') : '';
+        if (!phone) {
+            this.showToast('El cliente no tiene teléfono.', 'error');
+            this.vibrate([200]);
+            return;
+        }
+
+        const formattedBalance = this.formatCurrency(balance);
+        const formattedVef = this.formatVEF(balance);
+        const activeRate = this.activeCurrency === 'EUR' ? this.exchangeRateEUR : this.exchangeRate;
+        const currencyName = this.activeCurrency === 'EUR' ? 'EUR' : 'USD';
+        
+        const message = `Hola ${client.name}, te escribimos de *Inversiones Morey*. Tienes un saldo pendiente de *${formattedBalance}* (${formattedVef} - Tasa BCV: ${activeRate.toFixed(2)} Bs./${currencyName}). Por favor, contáctanos para procesar tu pago. ¡Gracias!`;
+        
+        const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+        this.vibrate([50, 50, 100]);
+    }
+
+    generatePDF(txId) {
+        const tx = this.transactions.find(t => t.id === txId);
+        if (!tx) return;
+        
+        const client = this.getClient(tx.clientId) || { name: 'Desconocido', email: '', phone: '' };
+        const amountFormatted = this.formatCurrency(tx.amount);
+        const typeStr = tx.type === 'SALE' ? 'Recibo de Venta' : 'Recibo de Abono';
+        const dateStr = this.formatDate(tx.createdAt);
+
+        let parts = (tx.description || '').split('| Tasa:');
+        let desc = parts[0].trim();
+        let tasa = parts[1] ? parts[1].trim() : 'N/A';
+
+        const pdfContainer = document.createElement('div');
+        pdfContainer.style.padding = '40px';
+        pdfContainer.style.background = '#ffffff';
+        pdfContainer.style.color = '#000000';
+        pdfContainer.style.fontFamily = "'Inter', sans-serif";
+        pdfContainer.style.width = '210mm';
+        pdfContainer.style.height = '297mm';
+        
+        pdfContainer.innerHTML = `
+            <div style="text-align: center; margin-bottom: 40px;">
+                <h1 style="color: #3b82f6; font-size: 36px; margin: 0;">Inversiones Morey</h1>
+                <p style="color: #64748b; font-size: 16px; margin-top: 5px;">Comprobante de Transacción</p>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 40px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
+                <div>
+                    <h3 style="color: #1e293b; margin: 0 0 10px 0; font-size: 20px;">Detalles del Cliente</h3>
+                    <p style="margin: 5px 0;"><strong>Nombre:</strong> ${this.escapeHTML(client.name)}</p>
+                    ${client.email ? `<p style="margin: 5px 0;"><strong>Email:</strong> ${this.escapeHTML(client.email)}</p>` : ''}
+                    ${client.phone ? `<p style="margin: 5px 0;"><strong>Teléfono:</strong> ${this.escapeHTML(client.phone)}</p>` : ''}
+                </div>
+                <div style="text-align: right;">
+                    <h3 style="color: #1e293b; margin: 0 0 10px 0; font-size: 20px;">Información del Recibo</h3>
+                    <p style="margin: 5px 0;"><strong>Fecha:</strong> ${dateStr}</p>
+                    <p style="margin: 5px 0;"><strong>Tipo:</strong> ${typeStr}</p>
+                    ${tx.type === 'PAYMENT' && tx.payment_method ? `<p style="margin: 5px 0;"><strong>Método de Pago:</strong> ${this.escapeHTML(tx.payment_method)}</p>` : ''}
+                    <p style="margin: 5px 0;"><strong>Ref:</strong> #${tx.local_id ? tx.local_id.substring(0, 8).toUpperCase() : 'N/A'}</p>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 40px;">
+                 <h3 style="color: #1e293b; margin: 0 0 15px 0; font-size: 20px;">Concepto</h3>
+                 <div style="background: rgba(59, 130, 246, 0.05); border: 1px solid rgba(59, 130, 246, 0.2); padding: 20px; border-radius: 8px;">
+                     <p style="font-size: 18px; margin: 0; line-height: 1.5;">${this.escapeHTML(desc)}</p>
+                 </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin-bottom: 50px;">
+                <div style="width: 300px;">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding: 10px 0;">
+                        <span style="font-weight: bold; color: #64748b;">Tasa BCV Aplicada:</span>
+                        <span>${this.escapeHTML(tasa)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; padding: 15px 0;">
+                        <span style="font-size: 24px; font-weight: bold; color: #1e293b;">Total:</span>
+                        <span style="font-size: 24px; font-weight: bold; color: #3b82f6;">${amountFormatted}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; color: #94a3b8; font-size: 14px; position: absolute; bottom: 50px; width: calc(100% - 80px);">
+                <p>Gracias por preferir a Inversiones Morey.</p>
+                <p style="font-size: 12px; margin-top: 10px;">Documento generado el ${new Date().toLocaleString()}</p>
+            </div>
+        `;
+        
+        const opt = {
+            margin:       0,
+            filename:     `Recibo_${client.name.replace(/\s+/g,'_')}_${new Date().getTime()}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true },
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        };
+
+        this.showToast('Generando recibo...', 'info');
+        this.vibrate([50]);
+        html2pdf().set(opt).from(pdfContainer).save().then(() => {
+            this.showToast('Recibo PDF descargado exitosamente', 'success');
+            this.vibrate([100, 50, 100]);
+        });
+    }
+
     async handleTransactionSubmit(submitterBtn) {
         const txId = document.getElementById('txId').value;
         const type = document.getElementById('txType').value;
@@ -1982,7 +2113,21 @@ class AccountsApp {
         const txDate = formDateVal ? new Date(formDateVal) : new Date();
         const paymentMethod = type === 'SALE' ? null : document.getElementById('txPaymentMethod').value;
 
-        if (!amount || amount <= 0 || !description.trim()) return;
+        if (!amount || amount <= 0) {
+            this.showToast('El monto debe ser mayor a 0', 'error');
+            this.vibrate([200]);
+            return;
+        }
+        if (!description.trim()) {
+            this.showToast('La descripción es obligatoria', 'error');
+            this.vibrate([200]);
+            return;
+        }
+        if (txDate > new Date()) {
+            this.showToast('La fecha no puede ser en el futuro', 'error');
+            this.vibrate([200]);
+            return;
+        }
 
         const dbClient = this.clients.find(c => c.id === this.currentClientId);
         if (!dbClient) {
@@ -2035,12 +2180,14 @@ class AccountsApp {
                     if (error2) throw error2;
                 }
                 this.showToast('Transacción actualizada');
+                this.vibrate([50]);
             } else {
                 // Insert
                 payload.local_id = this.getUniqueId();
                 const { error } = await this.supabase.from('transactions').insert(payload);
                 if (error) throw error;
                 this.showToast(type === 'SALE' ? 'Venta registrada' : 'Abono registrado');
+                this.vibrate([100]);
             }
 
             await this.saveData();
