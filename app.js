@@ -2008,11 +2008,8 @@ class AccountsApp {
         }
 
         const formattedBalance = this.formatCurrency(balance);
-        const formattedVef = this.formatVEF(balance);
-        const activeRate = this.activeCurrency === 'EUR' ? this.exchangeRateEUR : this.exchangeRate;
-        const currencyName = this.activeCurrency === 'EUR' ? 'EUR' : 'USD';
         
-        const message = `Hola ${client.name}, te escribimos de *Inversiones Morey*. Tienes un saldo pendiente de *${formattedBalance}* (${formattedVef} - Tasa BCV: ${activeRate.toFixed(2)} Bs./${currencyName}). Por favor, contáctanos para procesar tu pago. ¡Gracias!`;
+        const message = `Hola ${client.name}, te escribimos de *Inversiones Morey*. Tienes un saldo pendiente de *${formattedBalance}*. Por favor, contáctanos para procesar tu pago. ¡Gracias!`;
         
         const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
