@@ -1701,6 +1701,27 @@ class AccountsApp {
         const debtVefEl = document.getElementById('profileCurrentDebtVEF');
         debtVefEl.textContent = this.formatVEF(balance);
 
+        // Update WhatsApp Link
+        const waBtn = document.getElementById('whatsappClientBtn');
+        if (waBtn) {
+            let phone = client.phone ? client.phone.replace(/\D/g, '') : '';
+            if (phone) {
+                // Normalize for VZLA
+                if (phone.length === 11 && phone.startsWith('0')) phone = '58' + phone.substring(1);
+                else if (phone.length === 10 && (phone.startsWith('4') || phone.startsWith('2'))) phone = '58' + phone;
+                
+                const message = balance > 0 
+                    ? `Hola ${client.name}, te escribimos de *Inversiones Morey*. Tienes un saldo pendiente de *${this.formatCurrency(balance)}*. Por favor, contáctanos para procesar tu pago. ¡Gracias!`
+                    : `Hola ${client.name}, te escribimos de *Inversiones Morey*. ¿En qué podemos ayudarte hoy?`;
+                
+                waBtn.href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+                waBtn.style.display = 'flex';
+            } else {
+                waBtn.href = 'javascript:void(0)';
+                waBtn.onclick = () => this.showToast('El cliente no tiene un teléfono configurado.', 'error');
+            }
+        }
+
         // Render transactions timeline
         const timeline = document.getElementById('transactionsTimeline');
         const emptyState = document.getElementById('emptyTransactionsState');
@@ -2005,46 +2026,9 @@ class AccountsApp {
         const addAnotherBtn = document.getElementById('txSubmitAndAddAnotherBtn');
         if (addAnotherBtn) addAnotherBtn.style.display = 'none';
     }
+    // sendWhatsApp is now handled via direct <a> link for better compatibility
     sendWhatsApp() {
-        const client = this.getClient(this.currentClientId);
-        if (!client) return;
-
-        let phone = client.phone ? client.phone.replace(/\D/g, '') : '';
-        if (!phone) {
-            this.showToast('El cliente no tiene un teléfono configurado.', 'error');
-            this.vibrate([200]);
-            return;
-        }
-
-        // Normalizar número para Venezuela (código de país 58)
-        if (phone.length === 11 && phone.startsWith('0')) {
-            phone = '58' + phone.substring(1);
-        } else if (phone.length === 10 && (phone.startsWith('4') || phone.startsWith('2'))) {
-            phone = '58' + phone;
-        }
-
-        const balance = this.getClientBalance(client.id);
-        let message = '';
-        
-        if (balance > 0) {
-            const formattedBalance = this.formatCurrency(balance);
-            message = `Hola ${client.name}, te escribimos de *Inversiones Morey*. Tienes un saldo pendiente de *${formattedBalance}*. Por favor, contáctanos para procesar tu pago. ¡Gracias!`;
-        } else {
-            message = `Hola ${client.name}, te escribimos de *Inversiones Morey*. ¿En qué podemos ayudarte hoy?`;
-        }
-        
-        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-        
-        // Forma más segura de abrir el enlace para evitar bloqueadores y asegurar apertura de APP
-        const link = document.createElement('a');
-        link.href = url;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        this.vibrate([50, 50, 100]);
+        console.warn("sendWhatsApp is deprecated, using native <a> links.");
     }
 
     generatePDF(txId) {
