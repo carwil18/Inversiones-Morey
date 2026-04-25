@@ -193,7 +193,13 @@ class AccountsApp {
         document.querySelectorAll('.nav-item').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const targetId = e.currentTarget.dataset.target;
-                if (targetId) this.switchView(targetId);
+                if (targetId) {
+                    if (targetId === 'add-client-view') {
+                        this.currentClientId = null;
+                        this.resetClientForm();
+                    }
+                    this.switchView(targetId);
+                }
             });
         });
 
@@ -364,6 +370,10 @@ class AccountsApp {
             btn.addEventListener('click', (e) => {
                 const targetId = e.currentTarget.dataset.target;
                 if (targetId) {
+                    if (targetId === 'add-client-view') {
+                        this.currentClientId = null;
+                        this.resetClientForm();
+                    }
                     this.switchView(targetId);
                     document.querySelectorAll('.mobile-nav-item').forEach(i => i.classList.remove('active'));
                     e.currentTarget.classList.add('active');
@@ -1098,8 +1108,24 @@ class AccountsApp {
             document.getElementById('globalSearchInput').value = '';
             this.renderClientsTable('');
         } else if (viewId === 'add-client-view') {
-            topHeaderTitle.textContent = this.currentClientId ? 'Editar Cliente' : 'Nuevo Cliente';
-            this.resetClientForm();
+            const isEdit = !!this.currentClientId;
+            topHeaderTitle.textContent = isEdit ? 'Editar Cliente' : 'Nuevo Cliente';
+            
+            if (isEdit) {
+                const client = this.getClient(this.currentClientId);
+                if (client) {
+                    this.resetClientForm(); // Clear first
+                    document.getElementById('clientId').value = client.id;
+                    document.getElementById('clientName').value = client.name;
+                    document.getElementById('clientCategory').value = client.category || '';
+                    document.getElementById('clientPhone').value = client.phone || '';
+                    document.getElementById('clientEmail').value = client.email || '';
+                    document.getElementById('clientAddress').value = client.address || '';
+                    document.getElementById('clientFormTitle').textContent = 'Editar Cliente: ' + client.name;
+                }
+            } else {
+                this.resetClientForm();
+            }
         } else if (viewId === 'client-profile-view') {
             const client = this.getClient(this.currentClientId); // Fetch client first
             topHeaderTitle.textContent = client ? client.name : 'Perfil de Cliente';
@@ -1604,19 +1630,8 @@ class AccountsApp {
         const client = this.getClient(this.currentClientId);
         if (!client) return;
 
-        // Switch view first (this triggers the built-in form reset)
+        // The population is now handled by _executeSwitchView based on this.currentClientId
         this.switchView('add-client-view');
-
-        // Then populate Form
-        document.getElementById('clientId').value = client.id;
-        document.getElementById('clientName').value = client.name;
-        document.getElementById('clientCategory').value = client.category || '';
-        document.getElementById('clientPhone').value = client.phone || '';
-        document.getElementById('clientEmail').value = client.email || '';
-        document.getElementById('clientAddress').value = client.address || '';
-
-        // Change UI Title
-        document.getElementById('clientFormTitle').textContent = 'Editar Cliente: ' + client.name;
     }
 
     async deleteCurrentClient() {
@@ -2019,7 +2034,16 @@ class AccountsApp {
         }
         
         const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
+        
+        // Forma más segura de abrir el enlace para evitar bloqueadores y asegurar apertura de APP
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
         this.vibrate([50, 50, 100]);
     }
 
