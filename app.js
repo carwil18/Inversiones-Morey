@@ -1710,9 +1710,16 @@ class AccountsApp {
                 if (phone.length === 11 && phone.startsWith('0')) phone = '58' + phone.substring(1);
                 else if (phone.length === 10 && (phone.startsWith('4') || phone.startsWith('2'))) phone = '58' + phone;
                 
-                const message = balance > 0 
-                    ? `Hola ${client.name}, te escribimos de *Inversiones Morey*. Tienes un saldo pendiente de *${this.formatCurrency(balance)}*. Por favor, contáctanos para procesar tu pago. ¡Gracias!`
-                    : `Hola ${client.name}, te escribimos de *Inversiones Morey*. ¿En qué podemos ayudarte hoy?`;
+                // Buscar el último abono (PAYMENT)
+                const clientUuidForWA = String(client.uuid).toLowerCase();
+                const lastPayment = (this.transactions || [])
+                    .filter(t => String(t.clientId).toLowerCase() === clientUuidForWA && t.type === 'PAYMENT')
+                    .sort((a, b) => b.createdAt - a.createdAt)[0];
+                
+                const lastPaymentAmount = lastPayment ? this.formatCurrency(lastPayment.amount) : this.formatCurrency(0);
+                const debtActual = this.formatCurrency(balance);
+                
+                const message = `Hola ${client.name}, te escribimos de *Inversiones Morey*. Tu pago de *${lastPaymentAmount}* fue registrado con éxito. Tienes un saldo pendiente de *${debtActual}*. ¡Gracias!`;
                 
                 waBtn.href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
                 waBtn.style.display = 'flex';
