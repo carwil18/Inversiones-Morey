@@ -1994,24 +1994,31 @@ class AccountsApp {
         const client = this.getClient(this.currentClientId);
         if (!client) return;
 
-        const balance = this.getClientBalance(client.id);
-        if (balance <= 0) {
-            this.showToast('El cliente no tiene deudas pendientes.', 'info');
-            return;
-        }
-
-        const phone = client.phone ? client.phone.replace(/\D/g, '') : '';
+        let phone = client.phone ? client.phone.replace(/\D/g, '') : '';
         if (!phone) {
-            this.showToast('El cliente no tiene teléfono.', 'error');
+            this.showToast('El cliente no tiene un teléfono configurado.', 'error');
             this.vibrate([200]);
             return;
         }
 
-        const formattedBalance = this.formatCurrency(balance);
+        // Normalizar número para Venezuela (código de país 58)
+        if (phone.length === 11 && phone.startsWith('0')) {
+            phone = '58' + phone.substring(1);
+        } else if (phone.length === 10 && (phone.startsWith('4') || phone.startsWith('2'))) {
+            phone = '58' + phone;
+        }
+
+        const balance = this.getClientBalance(client.id);
+        let message = '';
         
-        const message = `Hola ${client.name}, te escribimos de *Inversiones Morey*. Tienes un saldo pendiente de *${formattedBalance}*. Por favor, contáctanos para procesar tu pago. ¡Gracias!`;
+        if (balance > 0) {
+            const formattedBalance = this.formatCurrency(balance);
+            message = `Hola ${client.name}, te escribimos de *Inversiones Morey*. Tienes un saldo pendiente de *${formattedBalance}*. Por favor, contáctanos para procesar tu pago. ¡Gracias!`;
+        } else {
+            message = `Hola ${client.name}, te escribimos de *Inversiones Morey*. ¿En qué podemos ayudarte hoy?`;
+        }
         
-        const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
         this.vibrate([50, 50, 100]);
     }
