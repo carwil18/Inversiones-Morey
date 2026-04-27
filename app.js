@@ -1186,7 +1186,177 @@ class AccountsApp {
         this.renderDailyChart();
         this.renderCategoryChart();
         this.renderAgingReport();
+        this._updateProjections(monthPayments);
         this.generateSmartInsights(totalSystemDebt, monthPayments);
+    }
+
+    _updateProjections(monthPayments) {
+        const projectionCard = document.getElementById('projectionCard');
+        const projectionAmountEl = document.getElementById('projectionAmount');
+        const projectionStatusEl = document.getElementById('projectionStatus');
+        
+        if (!projectionCard) return;
+
+        const now = new Date();
+        const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        const currentDay = now.getDate();
+        
+        // Simple linear projection: (collected / days_passed) * total_days
+        const projected = (monthPayments / currentDay) * daysInMonth;
+        
+        if (monthPayments > 10) {
+            projectionCard.style.display = 'flex';
+            this.animateValue('projectionAmount', 0, projected, 1000, true);
+            
+            const isImproving = projected > monthPayments * 1.1;
+            projectionStatusEl.textContent = isImproving ? 'Tendencia al Alza ↑' : 'Tendencia Estable →';
+            projectionStatusEl.style.color = isImproving ? 'var(--accent-green)' : 'var(--text-secondary)';
+        } else {
+            projectionCard.style.display = 'none';
+        }
+    }
+
+    // --- WhatsApp & Communication ---
+    openWhatsAppTemplates() {
+        const client = this.getClient(this.currentClientId);
+        if (!client) return;
+
+        const modal = document.getElementById('whatsappModal');
+        document.getElementById('waClientName').textContent = client.name;
+        
+        modal.classList.remove('hidden');
+        setTimeout(() => modal.classList.add('active'), 10);
+    }
+
+    closeWhatsAppTemplates() {
+        const modal = document.getElementById('whatsappModal');
+        modal.classList.remove('active');
+        setTimeout(() => modal.classList.add('hidden'), 300);
+    }
+
+    sendWhatsAppTemplate(type) {
+        const client = this.getClient(this.currentClientId);
+        if (!client || !client.phone) {
+            this.showToast('El cliente no tiene un teléfono registrado', 'error');
+            return;
+        }
+
+        const balance = this.getClientBalance(client.id);
+        const phone = client.phone.replace(/\s+/g, '').replace('+', '');
+        let message = "";
+
+        switch(type) {
+            case 'friendly':
+                message = `Hola ${client.name}! 👋 Te envío un saludo cordial de Inversiones Morey. Paso por aquí para recordarte que posees un saldo pendiente de ${this.formatCurrency(balance)}. ¿Cuándo podríamos coordinar el pago? Feliz día!`;
+                break;
+            case 'urgent':
+                message = `Estimado(a) ${client.name}. ⚠️ Le escribimos de Inversiones Morey para informarle que su deuda de ${this.formatCurrency(balance)} presenta un retraso considerable. Agradecemos su pronta respuesta para evitar recargos. Gracias.`;
+                break;
+            case 'thanks':
+                message = `¡Hola ${client.name}! ✨ Confirmamos la recepción de tu pago. Tu saldo ha sido actualizado con éxito. ¡Muchas gracias por tu confianza en Inversiones Morey!`;
+                break;
+        }
+
+        const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+        this.closeWhatsAppTemplates();
+    }
+
+    // --- PDF & Reports ---
+    async generatePDFInvoice() {
+        const client = this.getClient(this.currentClientId);
+        if (!client) return;
+
+        this.showToast('Generando reporte...', 'info');
+        
+        const balance = this.getClientBalance(client.id);
+        const clientTxs = this.transactions
+            .filter(t => String(t.clientId).toLowerCase() === String(client.uuid).toLowerCase())
+            .sort((a, b) => b.createdAt - a.createdAt);
+
+        // Create a temporary hidden div for the PDF content with premium styling
+        const element = document.createElement('div');
+        element.style.padding = '40px';
+        element.style.color = '#1e293b';
+        element.style.fontFamily = "'Inter', sans-serif";
+        element.style.background = '#ffffff';
+        element.style.width = '800px';
+
+        element.innerHTML = `
+            <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 30px;">
+                <div>
+                    <h1 style="margin: 0; color: #3b82f6;">Inversiones Morey</h1>
+                    <p style="margin: 5px 0; color: #64748b;">Gestión de Cobranzas Profesional</p>
+                </div>
+                <div style="text-align: right;">
+                    <h2 style="margin: 0; color: #1e293b;">Estado de Cuenta</h2>
+                    <p style="margin: 5px 0; color: #64748b;">Fecha: ${new Date().toLocaleDateString()}</p>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-bottom: 40px;">
+                <div>
+                    <h3 style="border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; color: #3b82f6;">Información del Cliente</h3>
+                    <p><strong>Nombre:</strong> ${this.escapeHTML(client.name)}</p>
+                    <p><strong>Categoría:</strong> ${this.escapeHTML(client.category || 'N/A')}</p>
+                    <p><strong>Teléfono:</strong> ${this.escapeHTML(client.phone || 'N/A')}</p>
+                    <p><strong>Email:</strong> ${this.escapeHTML(client.email || 'N/A')}</p>
+                </div>
+                <div style="background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; text-align: center;">
+                    <h3 style="margin-top: 0; color: #64748b; font-size: 0.9rem; text-transform: uppercase;">Saldo Pendiente Total</h3>
+                    <h1 style="margin: 10px 0; font-size: 2.5rem; color: #ef4444;">${this.formatCurrency(balance)}</h1>
+                    <p style="margin: 0; color: #64748b;">${this.formatVEF(balance)}</p>
+                </div>
+            </div>
+
+            <h3 style="color: #3b82f6; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">Últimos Movimientos</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                <thead>
+                    <tr style="background: #f1f5f9;">
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">Fecha</th>
+                        <th style="padding: 12px; text-align: left; border-bottom: 2px solid #e2e8f0;">Concepto</th>
+                        <th style="padding: 12px; text-align: right; border-bottom: 2px solid #e2e8f0;">Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${clientTxs.slice(0, 15).map(t => `
+                        <tr>
+                            <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;">${new Date(t.createdAt).toLocaleDateString()}</td>
+                            <td style="padding: 12px; border-bottom: 1px solid #f1f5f9;">
+                                <strong style="color: ${t.type === 'SALE' ? '#ef4444' : '#10b981'};">
+                                    ${t.type === 'SALE' ? 'Venta (Deuda)' : 'Abono'}
+                                </strong><br>
+                                <span style="font-size: 0.85rem; color: #64748b;">${this.escapeHTML(t.description)}</span>
+                            </td>
+                            <td style="padding: 12px; text-align: right; border-bottom: 1px solid #f1f5f9; font-weight: 600;">
+                                ${t.type === 'SALE' ? '-' : '+'}${this.formatCurrency(t.amount)}
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 50px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                <p style="color: #94a3b8; font-size: 0.8rem;">Este documento es un resumen informativo generado por el sistema Inversiones Morey.</p>
+                <p style="color: #3b82f6; font-weight: 600;">¡Gracias por su puntualidad!</p>
+            </div>
+        `;
+
+        const opt = {
+            margin: 0,
+            filename: `Estado_Cuenta_${client.name.replace(/\s+/g, '_')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        try {
+            await html2pdf().from(element).set(opt).save();
+            this.showToast('PDF generado con éxito');
+        } catch (err) {
+            console.error('PDF Error:', err);
+            this.showToast('Error al generar el PDF', 'error');
+        }
     }
 
     generateSmartInsights(totalDebt, monthCollected) {
@@ -1435,10 +1605,21 @@ class AccountsApp {
                     label: 'Pagos ($)',
                     data: dataPoints,
                     borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                    backgroundColor: (context) => {
+                        const chart = context.chart;
+                        const {ctx, chartArea} = chart;
+                        if (!chartArea) return null;
+                        const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+                        gradient.addColorStop(0, 'rgba(16, 185, 129, 0)');
+                        gradient.addColorStop(1, 'rgba(16, 185, 129, 0.2)');
+                        return gradient;
+                    },
                     fill: true,
                     tension: 0.4,
-                    pointRadius: range === 1 ? 0 : 3
+                    pointRadius: range === 1 ? 0 : 4,
+                    pointBackgroundColor: '#10b981',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2
                 }]
             },
             options: {

@@ -60,7 +60,7 @@
                     </div>
                 </div>
                 <div class="auth-actions">
-                    <button type="submit" class="btn btn-primary btn-full" id="loginBtn">Entrar</button>
+                    <button type="submit" class="btn btn-primary btn-full btn-shimmer" id="loginBtn">Entrar</button>
                     <button type="button" class="btn btn-text btn-full" id="toggleAuthBtn">¿No tienes cuenta?
                         Regístrate</button>
                     <button type="button" class="btn btn-text btn-full" id="forgotPwdBtn"
@@ -191,6 +191,18 @@
                                 <p>Cobrado Este Mes</p>
                                 <h3 id="totalMonthCollected">$0.00</h3>
                                 <p class="text-sm currency-vef" id="totalMonthCollectedVEF">Bs. 0,00</p>
+                            </div>
+                        </div>
+                        <!-- Projection Card -->
+                        <div class="glass-card summary-card highlight" id="projectionCard"
+                            style="border-left: 4px solid var(--accent-blue); display: none;">
+                            <div class="card-icon"
+                                style="background: rgba(59, 130, 246, 0.1); color: var(--accent-blue);"><i
+                                    class="ph ph-chart-line-up"></i></div>
+                            <div class="card-info">
+                                <p>Proyección Cobro Mes</p>
+                                <h3 id="projectionAmount">$0.00</h3>
+                                <p class="text-sm" style="color: var(--accent-green);" id="projectionStatus">Tendencia Positiva</p>
                             </div>
                         </div>
                     </div>
@@ -440,10 +452,11 @@
                                             onclick="app.deleteCurrentClient()" style="color: var(--accent-red);">
                                             <i class="ph ph-trash"></i>
                                         </button>
-                                        <a href="#" class="icon-btn-sm" id="whatsappClientBtn" title="Enviar WhatsApp" target="_blank" rel="noopener noreferrer"
-                                            style="color: #25D366; background: rgba(37, 211, 102, 0.1); border: 1px solid rgba(37, 211, 102, 0.2); text-decoration: none; display: flex; align-items: center; justify-content: center;">
+                                        <button class="icon-btn-sm" id="whatsappClientBtn" title="Enviar WhatsApp"
+                                            style="color: #25D366; background: rgba(37, 211, 102, 0.1); border: 1px solid rgba(37, 211, 102, 0.2); text-decoration: none; display: flex; align-items: center; justify-content: center;"
+                                            onclick="app.openWhatsAppTemplates()">
                                             <i class="ph ph-whatsapp-logo" style="font-size: 1.25rem;"></i>
-                                        </a>
+                                        </button>
                                     </div>
                                     <p class="text-sm" id="profileContactInfo">juan@correo.com | +1 234 567 8900</p>
                                 </div>
@@ -459,8 +472,11 @@
                                 <button class="btn btn-danger-outline" onclick="app.openTransactionModal('SALE')">
                                     <i class="ph ph-minus-circle"></i> Nueva Venta (Deuda)
                                 </button>
-                                <button class="btn btn-success" onclick="app.openTransactionModal('PAYMENT')">
+                                <button class="btn btn-success btn-shimmer" onclick="app.openTransactionModal('PAYMENT')">
                                     <i class="ph ph-plus-circle"></i> Registrar Abono
+                                </button>
+                                <button class="btn btn-secondary" onclick="app.generatePDFInvoice()">
+                                    <i class="ph ph-file-pdf"></i> Generar Estado de Cuenta
                                 </button>
                             </div>
                         </div>
@@ -649,6 +665,40 @@
 
             </div>
         </main>
+    </div>
+
+    <!-- WhatsApp Template Modal -->
+    <div id="whatsappModal" class="modal-overlay hidden">
+        <div class="glass-card modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3>Enviar Recordatorio</h3>
+                <button class="icon-btn" onclick="app.closeWhatsAppTemplates()"><i class="ph ph-x"></i></button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                <p class="text-sm" style="color: var(--text-secondary);">Selecciona una plantilla para enviar a <strong id="waClientName"></strong>:</p>
+                
+                <button class="btn btn-secondary" style="justify-content: flex-start; text-align: left; height: auto; padding: 1rem;" onclick="app.sendWhatsAppTemplate('friendly')">
+                    <div>
+                        <strong style="display: block; margin-bottom: 4px;">👋 Recordatorio Amigable</strong>
+                        <span class="text-xs" style="color: var(--text-muted); font-weight: 400;">"Hola! Solo paso para recordarte tu saldo pendiente..."</span>
+                    </div>
+                </button>
+
+                <button class="btn btn-secondary" style="justify-content: flex-start; text-align: left; height: auto; padding: 1rem;" onclick="app.sendWhatsAppTemplate('urgent')">
+                    <div>
+                        <strong style="display: block; margin-bottom: 4px; color: var(--accent-red);">⚠️ Cobro Urgente</strong>
+                        <span class="text-xs" style="color: var(--text-muted); font-weight: 400;">"Atención: Tienes una deuda vencida de más de 30 días..."</span>
+                    </div>
+                </button>
+
+                <button class="btn btn-secondary" style="justify-content: flex-start; text-align: left; height: auto; padding: 1rem;" onclick="app.sendWhatsAppTemplate('thanks')">
+                    <div>
+                        <strong style="display: block; margin-bottom: 4px; color: var(--accent-green);">✨ Confirmación de Pago</strong>
+                        <span class="text-xs" style="color: var(--text-muted); font-weight: 400;">"Hemos recibido tu pago con éxito. ¡Muchas gracias!"</span>
+                    </div>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Modals -->

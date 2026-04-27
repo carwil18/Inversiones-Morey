@@ -32,8 +32,15 @@
     --radius-xl: 32px;
     --radius-full: 9999px;
 
-    --transition-fast: 0.1s ease;
-    --transition-normal: 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-fast: 0.15s ease;
+    --transition-normal: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    --transition-bounce: 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* Shadow Palette */
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.1);
+    --shadow-md: 0 8px 16px rgba(0,0,0,0.2);
+    --shadow-lg: 0 12px 32px rgba(0,0,0,0.3);
+    --shadow-blue: 0 8px 24px rgba(59, 130, 246, 0.3);
 }
 
 /* Background Decorative Orbs */
@@ -111,14 +118,19 @@ body {
     content: "";
     position: absolute;
     inset: 0;
-    padding: 1px;
+    padding: 1.5px;
     border-radius: inherit;
-    background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent 40%, transparent 60%, rgba(255,255,255,0.05));
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent 40%, transparent 60%, rgba(255,255,255,0.08));
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask-composite: xor;
     -webkit-mask-composite: destination-out;
     pointer-events: none;
+    transition: var(--transition-normal);
+}
+
+.glass-card:hover::before {
+    background: linear-gradient(135deg, rgba(255,255,255,0.3), transparent 40%, transparent 60%, rgba(255,255,255,0.15));
 }
 
 /* Sidebar */
@@ -779,7 +791,33 @@ body {
 
 .btn-primary:hover {
     background: var(--accent-blue-hover);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-blue);
+}
+
+.btn-primary:active {
+    transform: translateY(0);
+}
+
+/* Shimmer Animation */
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.btn-shimmer {
+    background: linear-gradient(90deg, 
+        var(--accent-blue) 0%, 
+        #60a5fa 25%, 
+        var(--accent-blue) 50%, 
+        #60a5fa 75%, 
+        var(--accent-blue) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 4s infinite linear;
+}
+
+.btn-shimmer:hover {
+    animation: shimmer 1s infinite linear;
 }
 
 .btn-secondary {
