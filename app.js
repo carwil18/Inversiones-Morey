@@ -1242,7 +1242,16 @@ class AccountsApp {
         }
 
         const balance = this.getClientBalance(client.id);
-        const phone = client.phone.replace(/\s+/g, '').replace('+', '');
+        let phone = client.phone.replace(/\D/g, ''); // Remove all non-numeric chars
+        
+        // Handle Venezuelan local format (e.g. 0414... -> 58414...)
+        if (phone.startsWith('0')) {
+            phone = '58' + phone.substring(1);
+        } else if (phone.length === 10 && (phone.startsWith('4') || phone.startsWith('2'))) {
+            // Likely missing country code but also missing leading 0
+            phone = '58' + phone;
+        }
+
         let message = "";
 
         switch(type) {
@@ -1258,7 +1267,16 @@ class AccountsApp {
         }
 
         const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
+        
+        // Use a temporary anchor to bypass some popup blockers
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
         this.closeWhatsAppTemplates();
     }
 
