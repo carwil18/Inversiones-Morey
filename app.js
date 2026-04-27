@@ -1253,16 +1253,21 @@ class AccountsApp {
         }
 
         let message = "";
+        const clientTxs = this.transactions
+            .filter(t => (String(t.clientId) === String(client.id) || String(t.clientId) === String(client.uuid)) && t.type === 'PAYMENT')
+            .sort((a, b) => b.createdAt - a.createdAt);
+        
+        const lastPaymentAmount = clientTxs.length > 0 ? clientTxs[0].amount : 0;
 
         switch(type) {
             case 'friendly':
-                message = `Hola ${client.name}! 👋 Te envío un saludo cordial de Inversiones Morey. Paso por aquí para recordarte que posees un saldo pendiente de ${this.formatCurrency(balance)}. ¿Cuándo podríamos coordinar el pago? Feliz día!`;
+                message = `¡Hola ${client.name}! 👋 Te envío un saludo cordial de Inversiones Morey. Paso por aquí para recordarte que posees un saldo pendiente de ${this.formatCurrency(balance)}. ¿Cuándo podríamos coordinar el pago? Feliz día!`;
                 break;
             case 'urgent':
-                message = `Estimado(a) ${client.name}. ⚠️ Le escribimos de Inversiones Morey para informarle que su deuda de ${this.formatCurrency(balance)} presenta un retraso considerable. Agradecemos su pronta respuesta para evitar recargos. Gracias.`;
+                message = `Estimado(a) ${client.name}. Le escribimos de Inversiones Morey para informarle que su deuda de ${this.formatCurrency(balance)} presenta un retraso considerable. Agradecemos su pronta respuesta. Gracias.`;
                 break;
             case 'thanks':
-                message = `¡Hola ${client.name}! ✨ Confirmamos la recepción de tu pago. Tu saldo ha sido actualizado con éxito. ¡Muchas gracias por tu confianza en Inversiones Morey!`;
+                message = `¡Hola ${client.name}! 👋 Confirmamos la recepción de tu pago de ${this.formatCurrency(lastPaymentAmount)}. Tu saldo ha sido actualizado con éxito a ${this.formatCurrency(balance)}. ¡Muchas gracias por tu confianza en Inversiones Morey!`;
                 break;
         }
 
