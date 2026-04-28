@@ -1267,7 +1267,7 @@ class AccountsApp {
                 message = `Estimado(a) ${client.name}. Le escribimos de Inversiones Morey para informarle que su deuda de ${this.formatCurrency(balance)} presenta un retraso considerable. Agradecemos su pronta respuesta. Gracias.`;
                 break;
             case 'thanks':
-                message = `¡Hola ${client.name}! 👋 Confirmamos la recepción de tu pago de ${this.formatCurrency(lastPaymentAmount)}. Tu saldo ha sido actualizado con éxito a ${this.formatCurrency(balance)}. ¡Muchas gracias por tu confianza en Inversiones Morey!`;
+                message = `¡Hola, ${client.name}! 👋\nConfirmamos la recepción de tu pago por un monto de ${this.formatCurrency(lastPaymentAmount)}. Tu saldo ha sido actualizado con éxito y el monto pendiente por pagar es de ${this.formatCurrency(balance)}.\n¡Muchas gracias por tu confianza en Inversiones Morey!`;
                 break;
         }
 
