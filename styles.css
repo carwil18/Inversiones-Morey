@@ -652,6 +652,32 @@ body {
     align-items: start;
 }
 
+.dashboard-widgets-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .dashboard-grid, .dashboard-widgets-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.dashboard-widgets-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+@media (max-width: 1024px) {
+    .dashboard-grid, .dashboard-widgets-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* Adjustments for Category Chart */
 .chart-container-large {
     position: relative;
@@ -1085,6 +1111,131 @@ select.select-sm {
 .timeline {
     display: flex;
     flex-direction: column;
+    gap: 1.5rem;
+    position: relative;
+    padding-left: 1.5rem;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 4.5px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border-color);
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 2rem;
+}
+
+.timeline-dot {
+    position: absolute;
+    left: -5px;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--bg-secondary);
+    border: 2px solid var(--accent-blue);
+    z-index: 1;
+}
+
+.timeline-item.sale .timeline-dot {
+    border-color: var(--accent-red);
+}
+
+.timeline-item.payment .timeline-dot {
+    border-color: var(--accent-green);
+}
+
+.timeline-content {
+    background: rgba(255, 255, 255, 0.03);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+}
+
+.timeline-content h4 {
+    margin-bottom: 0.25rem;
+}
+
+.timeline-content p {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
+
+.timeline-item.mini {
+    padding-left: 1.5rem;
+    padding-bottom: 1.25rem;
+}
+
+.timeline-item.mini::before {
+    left: 4px;
+}
+
+.timeline-item.mini .timeline-dot {
+    width: 10px;
+    height: 10px;
+    left: 0;
+}
+
+.timeline-item.mini .timeline-content {
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+
+.timeline-item.mini .timeline-content h4 {
+    font-size: 0.85rem;
+}
+
+.timeline-item.mini .timeline-content p {
+    font-size: 0.75rem;
+}
+
+.debtor-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    transition: var(--transition-fast);
+    cursor: pointer;
+}
+
+.debtor-row:last-child {
+    border-bottom: none;
+}
+
+.debtor-row:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.debtor-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.debtor-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.debtor-category {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.debtor-amount {
+    font-weight: 700;
+    color: var(--accent-red);
+    font-size: 0.95rem;
+}
     gap: 1rem;
 }
 

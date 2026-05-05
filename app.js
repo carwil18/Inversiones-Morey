@@ -1121,6 +1121,7 @@ class AccountsApp {
                     document.getElementById('clientPhone').value = client.phone || '';
                     document.getElementById('clientEmail').value = client.email || '';
                     document.getElementById('clientAddress').value = client.address || '';
+                    document.getElementById('clientNotes').value = client.notes || '';
                     document.getElementById('clientFormTitle').textContent = 'Editar Cliente: ' + client.name;
                 }
             } else {
@@ -1186,8 +1187,88 @@ class AccountsApp {
         this.renderDailyChart();
         this.renderCategoryChart();
         this.renderAgingReport();
+        this.renderTopDebtors();
+        this.renderRecentActivity();
         this._updateProjections(monthPayments);
         this.generateSmartInsights(totalSystemDebt, monthPayments);
+    }
+
+    renderTopDebtors() {
+        const listEl = document.getElementById('topDebtorsList');
+        if (!listEl) return;
+
+        // Calcular saldos de todos los clientes y ordenar
+        const debtors = this.clients
+            .map(c => ({
+                id: c.id,
+                name: c.name,
+                category: c.category || 'Sin Categoría',
+                balance: this.getClientBalance(c.id)
+            }))
+            .filter(d => d.balance > 0)
+            .sort((a, b) => b.balance - a.balance)
+            .slice(0, 5);
+
+        if (debtors.length === 0) {
+            listEl.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    <i class="ph ph-smiley-wink" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                    <p>No hay deudas pendientes</p>
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = debtors.map(d => `
+            <div class="debtor-row" onclick="app.viewClientProfile('${d.id}')">
+                <div class="debtor-info">
+                    <span class="debtor-name">${this.escapeHTML(d.name)}</span>
+                    <span class="debtor-category">${this.escapeHTML(d.category)}</span>
+                </div>
+                <span class="debtor-amount">${this.formatCurrency(d.balance)}</span>
+            </div>
+        `).join('');
+    }
+
+    renderRecentActivity() {
+        const timelineEl = document.getElementById('recentActivityTimeline');
+        if (!timelineEl) return;
+
+        // Obtener las últimas 5 transacciones ordenadas por fecha
+        const recentTx = [...this.transactions]
+            .sort((a, b) => b.createdAt - a.createdAt)
+            .slice(0, 5);
+
+        if (recentTx.length === 0) {
+            timelineEl.innerHTML = `
+                <div style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    <p>No hay actividad reciente</p>
+                </div>
+            `;
+            return;
+        }
+
+        timelineEl.innerHTML = recentTx.map(t => {
+            const client = this.getClient(t.clientId);
+            const clientName = client ? client.name : 'Cliente desconocido';
+            const dateStr = this.formatDate(t.createdAt);
+            const typeClass = t.type === 'SALE' ? 'sale' : 'payment';
+            const actionText = t.type === 'SALE' ? 'Venta registrada' : 'Pago recibido';
+            const amountText = this.formatCurrency(t.amount);
+
+            return `
+                <div class="timeline-item mini ${typeClass}">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <h4>${this.escapeHTML(clientName)}</h4>
+                            <span style="font-size: 0.7rem; color: var(--text-muted);">${dateStr}</span>
+                        </div>
+                        <p>${actionText}: <strong>${amountText}</strong></p>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     _updateProjections(monthPayments) {
@@ -1223,6 +1304,7 @@ class AccountsApp {
 
         const modal = document.getElementById('whatsappModal');
         document.getElementById('waClientName').textContent = client.name;
+        document.getElementById('waCustomMessage').value = '';
         
         modal.classList.remove('hidden');
         setTimeout(() => modal.classList.add('active'), 10);
@@ -1268,6 +1350,13 @@ class AccountsApp {
                 break;
             case 'thanks':
                 message = `¡Hola, ${client.name}! 👋\nConfirmamos la recepción de tu pago por un monto de ${this.formatCurrency(lastPaymentAmount)}. Tu saldo ha sido actualizado con éxito y el monto pendiente por pagar es de ${this.formatCurrency(balance)}.\n¡Muchas gracias por tu confianza en Inversiones Morey!`;
+                break;
+            case 'custom':
+                message = document.getElementById('waCustomMessage').value;
+                if (!message.trim()) {
+                    this.showToast('El mensaje no puede estar vacío', 'error');
+                    return;
+                }
                 break;
         }
 
@@ -1796,18 +1885,19 @@ class AccountsApp {
         const phone = document.getElementById('clientPhone').value;
         const email = document.getElementById('clientEmail').value;
         const address = document.getElementById('clientAddress').value;
+        const notes = document.getElementById('clientNotes').value;
 
         if (!name.trim()) return;
 
         if (idInput) {
             // Edit existing
             const { error } = await this.supabase.from('clients').update({
-                name, category, phone, email, address
+                name, category, phone, email, address, notes
             }).eq('local_id', idInput).eq('user_id', this.user.id);
 
             if (error) {
                 await this.supabase.from('clients').update({
-                    name, category, phone, email, address
+                    name, category, phone, email, address, notes
                 }).eq('id', idInput).eq('user_id', this.user.id);
             }
             this.showToast('Cliente actualizado');
@@ -1815,7 +1905,7 @@ class AccountsApp {
             // Create new
             const localId = this.getUniqueId();
             const { error } = await this.supabase.from('clients').insert({
-                name, category, phone, email, address,
+                name, category, phone, email, address, notes,
                 local_id: localId,
                 user_id: this.user.id
             });
@@ -1912,6 +2002,11 @@ class AccountsApp {
 
         const debtVefEl = document.getElementById('profileCurrentDebtVEF');
         debtVefEl.textContent = this.formatVEF(balance);
+
+        const notesEl = document.getElementById('profileNotes');
+        if (notesEl) {
+            notesEl.textContent = client.notes || 'Sin notas registradas.';
+        }
 
         // Update WhatsApp Link
         const waBtn = document.getElementById('whatsappClientBtn');
