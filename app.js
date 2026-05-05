@@ -768,8 +768,13 @@ class AccountsApp {
         return Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
     }
 
-    getClient(id) {
-        return this.clients.find(c => c.id === id);
+    getClient(idOrUuid) {
+        if (!idOrUuid) return null;
+        const searchStr = String(idOrUuid).toLowerCase();
+        return this.clients.find(c => 
+            String(c.id).toLowerCase() === searchStr || 
+            String(c.uuid).toLowerCase() === searchStr
+        );
     }
 
     getClientBalance(clientId) {
