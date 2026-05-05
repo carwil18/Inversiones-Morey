@@ -222,108 +222,97 @@
                         </div>
                     </div>
 
-                    <div class="dashboard-grid">
-                        <!-- Daily Payments Chart Card -->
-                        <div class="glass-card chart-card">
-                            <div class="card-header"
-                                style="display: flex; justify-content: space-between; align-items: center;">
-                                <h3>Pagos Recibidos</h3>
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <select id="chartTimeRange" class="select-sm"
-                                        style="width: auto; padding: 0.25rem 2rem 0.25rem 0.75rem; font-size: 0.75rem;">
-                                        <option value="1">Hoy</option>
-                                        <option value="3">Últimos 3 días</option>
-                                        <option value="7" selected>Últimos 7 días</option>
-                                        <option value="30">Último mes</option>
-                                    </select>
-                                    <div class="badge-status success">Actividad</div>
+                    <div class="dashboard-layout">
+                        <!-- Columna Principal -->
+                        <div class="dashboard-main">
+                            <!-- Daily Payments Chart Card -->
+                            <div class="glass-card chart-card">
+                                <div class="card-header"
+                                    style="display: flex; justify-content: space-between; align-items: center;">
+                                    <h3>Pagos Recibidos</h3>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <select id="chartTimeRange" class="select-sm"
+                                            style="width: auto; padding: 0.25rem 2rem 0.25rem 0.75rem; font-size: 0.75rem;">
+                                            <option value="1">Hoy</option>
+                                            <option value="3">Últimos 3 días</option>
+                                            <option value="7" selected>Últimos 7 días</option>
+                                            <option value="30">Último mes</option>
+                                        </select>
+                                        <div class="badge-status success">Actividad</div>
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="chart-container-large">
-                                <canvas id="dailyPaymentsChart"></canvas>
+                                <div class="chart-container-large">
+                                    <canvas id="dailyPaymentsChart"></canvas>
                                     <div id="emptyChartState" class="empty-state hidden">
                                         <i class="ph ph-chart-bar"></i>
                                         <p id="emptyChartText">No se han registrado pagos hoy.</p>
                                     </div>
-                            </div>
-                        </div>
-
-                        <!-- Daily Stats Card -->
-                        <div class="glass-card stats-mini-card">
-                            <div class="card-header">
-                                <h3 id="statsSummaryTitle">Resumen del Día</h3>
-                            </div>
-                            <div class="mini-stats-grid">
-                                <div class="mini-stat">
-                                    <span class="label" id="collectedLabel">Cobrado Hoy</span>
-                                    <h4 id="todayCollectedAmount">$0.00</h4>
-                                </div>
-                                <div class="mini-stat">
-                                    <span class="label" id="salesLabel">Ventas Hoy</span>
-                                    <h4 id="todaySalesAmount">$0.00</h4>
-                                </div>
-                                <div class="mini-stat warning" onclick="app.switchView('clients-view')"
-                                    style="cursor: pointer;">
-                                    <span class="label">Clientes Morosos</span>
-                                    <h4 id="moroseClientsCount">0</h4>
                                 </div>
                             </div>
 
-                            <div class="card-header"
-                                style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; padding-bottom: 0;">
-                                <h3 style="font-size: 0.9rem; color: var(--text-secondary);">Desglose por Método de
-                                    Pago
-                                </h3>
-                            </div>
-                            <div id="paymentMethodsBreakdown"
-                                style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
-                                <!-- Payment methods injected here -->
-                            </div>
-
-                            <div class="card-header"
-                                style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; padding-bottom: 0;">
-                                <h3 style="font-size: 0.9rem; color: var(--text-secondary);">Antigüedad de Deuda
-                                </h3>
-                            </div>
-                            <div id="agingReportContainer"
-                                style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
-                                <!-- Aging buckets injected here -->
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="dashboard-widgets-grid">
-                        <!-- Top Debtors Card -->
-                        <div class="glass-card table-card" style="padding: 1.5rem; margin-top: 0;">
-                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
-                                <h3>Mayores Deudores</h3>
-                                <button class="btn btn-text btn-sm" onclick="app.switchView('clients-view')" style="font-size: 0.75rem; padding: 0;">Ver todos</button>
-                            </div>
-                            <div id="topDebtorsList" style="display: flex; flex-direction: column;">
-                                <!-- Populated by JS -->
+                            <!-- Top Debtors Card -->
+                            <div class="glass-card table-card" style="padding: 1.5rem;">
+                                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
+                                    <h3>Mayores Deudores</h3>
+                                    <button class="btn btn-text btn-sm" onclick="app.switchView('clients-view')" style="font-size: 0.75rem; padding: 0;">Ver todos</button>
+                                </div>
+                                <div id="topDebtorsList" style="display: flex; flex-direction: column;">
+                                    <!-- Populated by JS -->
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Recent Activity Card -->
-                        <div class="glass-card stats-mini-card" style="padding: 1.5rem; margin-top: 0;">
-                            <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
-                                <h3>Actividad Reciente</h3>
-                            </div>
-                            <div class="timeline" id="recentActivityTimeline" style="padding-left: 1.25rem;">
-                                <!-- Populated by JS -->
-                            </div>
-                        </div>
-                    </div>
+                        <!-- Columna Lateral (Sidebar) -->
+                        <div class="dashboard-sidebar">
+                            <!-- Daily Stats Card -->
+                            <div class="glass-card stats-mini-card">
+                                <div class="card-header">
+                                    <h3 id="statsSummaryTitle">Resumen del Día</h3>
+                                </div>
+                                <div class="mini-stats-grid">
+                                    <div class="mini-stat">
+                                        <span class="label" id="collectedLabel">Cobrado Hoy</span>
+                                        <h4 id="todayCollectedAmount">$0.00</h4>
+                                    </div>
+                                    <div class="mini-stat">
+                                        <span class="label" id="salesLabel">Ventas Hoy</span>
+                                        <h4 id="todaySalesAmount">$0.00</h4>
+                                    </div>
+                                    <div class="mini-stat warning" onclick="app.switchView('clients-view')"
+                                        style="cursor: pointer;">
+                                        <span class="label">Clientes Morosos</span>
+                                        <h4 id="moroseClientsCount">0</h4>
+                                    </div>
+                                </div>
 
-                    <div class="dashboard-grid" style="margin-top: 1.5rem;">
-                        <!-- Debt by Category Chart Card -->
-                        <div class="glass-card chart-card">
-                            <div class="card-header">
-                                <h3>Deuda por Categoría</h3>
+                                <div class="card-header"
+                                    style="margin-top: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1rem; padding-bottom: 0;">
+                                    <h3 style="font-size: 0.9rem; color: var(--text-secondary);">Antigüedad de Deuda</h3>
+                                </div>
+                                <div id="agingReportContainer"
+                                    style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
+                                    <!-- Aging buckets injected here -->
+                                </div>
                             </div>
-                            <div class="chart-container-large"
-                                style="display: flex; align-items: center; justify-content: center; padding: 1rem;">
-                                <canvas id="categoryDebtChart"></canvas>
+
+                            <!-- Debt by Category Chart Card -->
+                            <div class="glass-card chart-card" style="padding-bottom: 1rem;">
+                                <div class="card-header">
+                                    <h3>Deuda por Categoría</h3>
+                                </div>
+                                <div class="chart-container-small" style="height: 200px; display: flex; align-items: center; justify-content: center;">
+                                    <canvas id="categoryDebtChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Recent Activity Card -->
+                            <div class="glass-card stats-mini-card" style="padding: 1.5rem; margin-top: 0;">
+                                <div class="card-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
+                                    <h3>Actividad Reciente</h3>
+                                </div>
+                                <div class="timeline" id="recentActivityTimeline" style="padding-left: 1.25rem;">
+                                    <!-- Populated by JS -->
+                                </div>
                             </div>
                         </div>
                     </div>

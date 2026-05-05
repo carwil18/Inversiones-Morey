@@ -645,50 +645,35 @@ body {
     margin-bottom: 2rem;
 }
 
-.dashboard-grid {
+.dashboard-layout {
     display: grid;
-    grid-template-columns: 1fr 350px;
+    grid-template-columns: 1fr 380px;
     gap: 1.5rem;
     align-items: start;
 }
 
-.dashboard-widgets-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+.dashboard-main, .dashboard-sidebar {
+    display: flex;
+    flex-direction: column;
     gap: 1.5rem;
-    margin-top: 1.5rem;
 }
 
-@media (max-width: 1024px) {
-    .dashboard-grid, .dashboard-widgets-grid {
+@media (max-width: 1200px) {
+    .dashboard-layout {
         grid-template-columns: 1fr;
     }
 }
 
-.dashboard-widgets-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-}
-
-@media (max-width: 1024px) {
-    .dashboard-grid, .dashboard-widgets-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-/* Adjustments for Category Chart */
 .chart-container-large {
     position: relative;
     height: 300px;
     width: 100%;
 }
 
-@media (max-width: 1024px) {
-    .dashboard-grid {
-        grid-template-columns: 1fr;
-    }
+.chart-container-small {
+    position: relative;
+    height: 220px;
+    width: 100%;
 }
 
 .summary-card {
