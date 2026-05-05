@@ -233,7 +233,7 @@
                                         style="width: auto; padding: 0.25rem 2rem 0.25rem 0.75rem; font-size: 0.75rem;">
                                         <option value="1">Hoy</option>
                                         <option value="3">Últimos 3 días</option>
-                                        <option value="7">Últimos 7 días</option>
+                                        <option value="7" selected>Últimos 7 días</option>
                                         <option value="30">Último mes</option>
                                     </select>
                                     <div class="badge-status success">Actividad</div>
@@ -241,10 +241,10 @@
                             </div>
                             <div class="chart-container-large">
                                 <canvas id="dailyPaymentsChart"></canvas>
-                                <div id="emptyChartState" class="empty-state hidden">
-                                    <i class="ph ph-chart-bar"></i>
-                                    <p>No se han registrado pagos hoy.</p>
-                                </div>
+                                    <div id="emptyChartState" class="empty-state hidden">
+                                        <i class="ph ph-chart-bar"></i>
+                                        <p id="emptyChartText">No se han registrado pagos hoy.</p>
+                                    </div>
                             </div>
                         </div>
 

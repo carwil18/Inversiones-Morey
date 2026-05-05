@@ -1578,17 +1578,25 @@ class AccountsApp {
         const moroseCount = this.clients.filter(c => this.isClientMorose(c.id)).length;
         document.getElementById('moroseClientsCount').textContent = moroseCount;
 
-        const ctx = document.getElementById('dailyPaymentsChart').getContext('2d');
         const emptyState = document.getElementById('emptyChartState');
+        const emptyText = document.getElementById('emptyChartText');
 
         if (filteredPayments.length === 0) {
             if (this.paymentsChart) this.paymentsChart.destroy();
+            
+            let rangeText = 'hoy';
+            if (range === 3) rangeText = 'en los últimos 3 días';
+            if (range === 7) rangeText = 'en los últimos 7 días';
+            if (range === 30) rangeText = 'en el último mes';
+            
+            if (emptyText) emptyText.textContent = `No se han registrado pagos ${rangeText}.`;
             emptyState.classList.remove('hidden');
             return;
         }
 
         emptyState.classList.add('hidden');
 
+        const ctx = document.getElementById('dailyPaymentsChart').getContext('2d');
         let labels = [];
         let dataPoints = [];
 
