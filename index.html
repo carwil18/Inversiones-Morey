@@ -107,6 +107,9 @@
                 <button class="nav-item" data-target="converter-view">
                     <i class="ph ph-arrows-left-right"></i> Convertidor
                 </button>
+                <button class="nav-item" data-target="margin-calc-view">
+                    <i class="ph ph-percent"></i> Margen de Ganancia
+                </button>
             </nav>
             <div class="sidebar-footer">
                 <button class="btn btn-text theme-toggle-btn" id="themeToggleBtn">
@@ -693,6 +696,131 @@
                                 <i class="ph ph-arrow-counter-clockwise"></i> Limpiar
                             </button>
                         </div>
+                    </div>
+                </section>
+
+                <!-- VIEW: Margin Calculator -->
+                <section id="margin-calc-view" class="view-section">
+                    <div class="margin-calc-layout">
+
+                        <!-- Calculadora -->
+                        <div class="glass-card form-card margin-calc-card">
+                            <div class="card-header">
+                                <h3><i class="ph ph-percent" style="color: var(--accent-blue);"></i> Calculadora de Margen de Ganancia</h3>
+                                <p class="text-sm" style="color: var(--text-secondary); margin-top: 4px;">Calcula el precio de venta según el margen deseado</p>
+                            </div>
+
+                            <div class="margin-formula-banner">
+                                <span class="formula-label">Fórmula:</span>
+                                <span class="formula-text">Precio Venta = Costo ÷ (1 − Margen%)</span>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="marginCost">Costo del Producto ($)</label>
+                                    <div class="input-with-icon">
+                                        <i class="ph ph-currency-dollar"></i>
+                                        <input type="number" id="marginCost" step="0.01" min="0" placeholder="0.00">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="marginPercent">Margen de Ganancia (%)</label>
+                                    <div class="input-with-icon">
+                                        <i class="ph ph-percent"></i>
+                                        <input type="number" id="marginPercent" step="0.1" min="0" max="99.9" placeholder="30">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Preset Margin Buttons -->
+                            <div class="margin-presets">
+                                <span class="text-sm" style="color: var(--text-secondary);">Atajos rápidos:</span>
+                                <button class="btn-preset" data-margin="10">10%</button>
+                                <button class="btn-preset" data-margin="20">20%</button>
+                                <button class="btn-preset" data-margin="30">30%</button>
+                                <button class="btn-preset" data-margin="40">40%</button>
+                                <button class="btn-preset" data-margin="50">50%</button>
+                            </div>
+
+                            <!-- Result Panel -->
+                            <div class="margin-result-panel hidden" id="marginResultPanel">
+                                <div class="margin-result-grid">
+                                    <div class="margin-result-item">
+                                        <span class="result-label">Costo</span>
+                                        <span class="result-value" id="resCosto">$0.00</span>
+                                    </div>
+                                    <div class="margin-result-item accent-green">
+                                        <span class="result-label">Ganancia</span>
+                                        <span class="result-value" id="resGanancia">$0.00</span>
+                                    </div>
+                                    <div class="margin-result-item accent-blue highlight-price">
+                                        <span class="result-label">Precio de Venta</span>
+                                        <span class="result-value large" id="resPrecioVenta">$0.00</span>
+                                    </div>
+                                </div>
+                                <div class="margin-result-sub">
+                                    <i class="ph ph-info"></i>
+                                    Por cada <strong id="resUnidad">$1.00</strong> vendido, ganas <strong id="resGananciaUnit" style="color: var(--accent-green);"></strong> (<span id="resMarginDisplay"></span>% de margen)
+                                </div>
+                            </div>
+
+                            <!-- Save Form -->
+                            <div class="margin-save-form" id="marginSaveForm" style="display:none;">
+                                <div class="form-group">
+                                    <label for="marginProductName">Nombre del Producto</label>
+                                    <div class="input-with-icon">
+                                        <i class="ph ph-tag"></i>
+                                        <input type="text" id="marginProductName" placeholder="Ej. Camiseta Negra M">
+                                    </div>
+                                </div>
+                                <div class="form-actions">
+                                    <button type="button" class="btn btn-secondary" id="marginClearBtn">
+                                        <i class="ph ph-arrow-counter-clockwise"></i> Limpiar
+                                    </button>
+                                    <button type="button" class="btn btn-primary" id="marginSaveBtn">
+                                        <i class="ph ph-floppy-disk"></i> Guardar Producto
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de Productos Guardados -->
+                        <div class="glass-card table-card margin-products-card">
+                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <h3>Productos Guardados</h3>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <div class="search-bar" style="padding: 0.2rem 0.8rem;">
+                                        <i class="ph ph-magnifying-glass" style="font-size: 0.9rem;"></i>
+                                        <input type="text" id="marginProductSearch" placeholder="Buscar producto..." style="font-size: 0.8rem;">
+                                    </div>
+                                    <button class="btn btn-sm btn-secondary" id="marginExportCSVBtn" title="Exportar a CSV">
+                                        <i class="ph ph-file-csv"></i> CSV
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-container">
+                                <table class="data-table" id="marginProductsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Producto</th>
+                                            <th>Costo</th>
+                                            <th>Margen</th>
+                                            <th>Ganancia</th>
+                                            <th>Precio Venta</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="marginProductsTableBody">
+                                        <!-- Populated by JS -->
+                                    </tbody>
+                                </table>
+                                <div id="emptyMarginState" class="empty-state hidden">
+                                    <i class="ph ph-tag"></i>
+                                    <p>Aún no has guardado productos. Calcula un margen y guárdalo.</p>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </section>
 

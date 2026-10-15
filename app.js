@@ -1145,6 +1145,14 @@ class AccountsApp {
             document.getElementById('converterRateDisplay').textContent = `Tasa actual: 1${symbol} = ${rate.toFixed(2)} Bs.`;
         } else if (viewId === 'data-management-view') {
             topHeaderTitle.textContent = 'Base de Datos';
+        } else if (viewId === 'margin-calc-view') {
+            topHeaderTitle.textContent = 'Margen de Ganancia';
+            if (!this._marginCalcInitialized) {
+                this.initMarginCalculator();
+                this._marginCalcInitialized = true;
+            } else {
+                this.renderMarginProducts();
+            }
         }
     }
 
@@ -2616,6 +2624,203 @@ class AccountsApp {
         document.body.removeChild(a);
         this.showToast('Archivo CSV exportado con éxito');
     }
+    // ==========================================
+    // MARGIN CALCULATOR MODULE
+    // ==========================================
+
+    initMarginCalculator() {
+        // Load stored products
+        this.marginProducts = JSON.parse(localStorage.getItem('ar_margin_products')) || [];
+
+        // Wire inputs for live calculation
+        const costInput = document.getElementById('marginCost');
+        const pctInput = document.getElementById('marginPercent');
+
+        if (costInput) costInput.addEventListener('input', () => this.calcMargin());
+        if (pctInput)  pctInput.addEventListener('input',  () => this.calcMargin());
+
+        // Preset buttons
+        document.querySelectorAll('.btn-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('marginPercent').value = btn.dataset.margin;
+                // Highlight active preset
+                document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                this.calcMargin();
+            });
+        });
+
+        // Save button
+        const saveBtn = document.getElementById('marginSaveBtn');
+        if (saveBtn) saveBtn.addEventListener('click', () => this.saveMarginProduct());
+
+        // Clear button
+        const clearBtn = document.getElementById('marginClearBtn');
+        if (clearBtn) clearBtn.addEventListener('click', () => this.clearMarginCalc());
+
+        // Search
+        const searchInput = document.getElementById('marginProductSearch');
+        if (searchInput) searchInput.addEventListener('input', () => this.renderMarginProducts(searchInput.value));
+
+        // Export CSV
+        const exportBtn = document.getElementById('marginExportCSVBtn');
+        if (exportBtn) exportBtn.addEventListener('click', () => this.exportMarginCSV());
+
+        this.renderMarginProducts();
+    }
+
+    calcMargin() {
+        const cost = parseFloat(document.getElementById('marginCost').value);
+        const pct  = parseFloat(document.getElementById('marginPercent').value);
+
+        const panel    = document.getElementById('marginResultPanel');
+        const saveForm = document.getElementById('marginSaveForm');
+
+        if (isNaN(cost) || isNaN(pct) || cost <= 0 || pct <= 0 || pct >= 100) {
+            panel.classList.add('hidden');
+            saveForm.style.display = 'none';
+            return;
+        }
+
+        // Profit margin formula: Sale Price = Cost / (1 - margin%)
+        const salePrice = cost / (1 - pct / 100);
+        const profit    = salePrice - cost;
+
+        // Populate result
+        document.getElementById('resCosto').textContent       = this.formatCurrency(cost);
+        document.getElementById('resGanancia').textContent    = this.formatCurrency(profit);
+        document.getElementById('resPrecioVenta').textContent = this.formatCurrency(salePrice);
+        document.getElementById('resUnidad').textContent      = this.formatCurrency(salePrice);
+        document.getElementById('resGananciaUnit').textContent = this.formatCurrency(profit);
+        document.getElementById('resMarginDisplay').textContent = pct.toFixed(1);
+
+        panel.classList.remove('hidden');
+        saveForm.style.display = 'block';
+
+        // Store current calculation for saving
+        this._currentCalc = { cost, pct, salePrice, profit };
+    }
+
+    saveMarginProduct() {
+        if (!this._currentCalc) {
+            this.showToast('Primero realiza un cálculo', 'warning');
+            return;
+        }
+
+        const nameInput = document.getElementById('marginProductName');
+        const name = nameInput.value.trim();
+        if (!name) {
+            this.showToast('Escribe un nombre para el producto', 'warning');
+            nameInput.focus();
+            return;
+        }
+
+        const { cost, pct, salePrice, profit } = this._currentCalc;
+        const product = {
+            id: Date.now().toString(),
+            name,
+            cost,
+            margin: pct,
+            profit,
+            salePrice,
+            savedAt: new Date().toISOString()
+        };
+
+        this.marginProducts.unshift(product);
+        localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
+        this.renderMarginProducts();
+        nameInput.value = '';
+        this.showToast(`"${this.escapeHTML(name)}" guardado con éxito`, 'success');
+    }
+
+    deleteMarginProduct(id) {
+        this.marginProducts = this.marginProducts.filter(p => p.id !== id);
+        localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
+        this.renderMarginProducts();
+        this.showToast('Producto eliminado', 'info');
+    }
+
+    loadMarginProduct(id) {
+        const product = this.marginProducts.find(p => p.id === id);
+        if (!product) return;
+        document.getElementById('marginCost').value    = product.cost;
+        document.getElementById('marginPercent').value = product.margin;
+        // Update preset highlights
+        document.querySelectorAll('.btn-preset').forEach(b => {
+            b.classList.toggle('active', parseFloat(b.dataset.margin) === product.margin);
+        });
+        this.calcMargin();
+        // Scroll to top of calculator
+        document.querySelector('.margin-calc-card').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    renderMarginProducts(filter = '') {
+        const tbody    = document.getElementById('marginProductsTableBody');
+        const empty    = document.getElementById('emptyMarginState');
+        if (!tbody) return;
+
+        const term = filter.toLowerCase().trim();
+        const list = this.marginProducts.filter(p => !term || p.name.toLowerCase().includes(term));
+
+        tbody.innerHTML = '';
+
+        if (list.length === 0) {
+            empty.classList.remove('hidden');
+            return;
+        }
+        empty.classList.add('hidden');
+
+        list.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${this.escapeHTML(p.name)}</strong><br><span class="text-xs" style="color:var(--text-muted);">${new Date(p.savedAt).toLocaleDateString()}</span></td>
+                <td>${this.formatCurrency(p.cost)}</td>
+                <td><span class="badge-status success">${p.margin.toFixed(1)}%</span></td>
+                <td style="color: var(--accent-green);">${this.formatCurrency(p.profit)}</td>
+                <td><strong style="color: var(--accent-blue); font-size: 1rem;">${this.formatCurrency(p.salePrice)}</strong></td>
+                <td>
+                    <div style="display:flex; gap:0.4rem;">
+                        <button class="icon-btn-sm" title="Cargar en calculadora" onclick="app.loadMarginProduct('${p.id}')">
+                            <i class="ph ph-arrow-square-up-left"></i>
+                        </button>
+                        <button class="icon-btn-sm" title="Eliminar" style="color:var(--accent-red);" onclick="app.deleteMarginProduct('${p.id}')">
+                            <i class="ph ph-trash"></i>
+                        </button>
+                    </div>
+                </td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    clearMarginCalc() {
+        document.getElementById('marginCost').value    = '';
+        document.getElementById('marginPercent').value = '';
+        document.getElementById('marginProductName').value = '';
+        document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+        document.getElementById('marginResultPanel').classList.add('hidden');
+        document.getElementById('marginSaveForm').style.display = 'none';
+        this._currentCalc = null;
+    }
+
+    exportMarginCSV() {
+        if (!this.marginProducts || this.marginProducts.length === 0) {
+            this.showToast('No hay productos para exportar', 'warning');
+            return;
+        }
+        const headers = ['Producto', 'Costo ($)', 'Margen (%)', 'Ganancia ($)', 'Precio Venta ($)', 'Fecha'];
+        let csv = headers.join(',') + '\n';
+        this.marginProducts.forEach(p => {
+            const name = `"${p.name.replace(/"/g, '""')}"`;
+            csv += [name, p.cost.toFixed(2), p.margin.toFixed(1), p.profit.toFixed(2), p.salePrice.toFixed(2), new Date(p.savedAt).toLocaleDateString()].join(',') + '\n';
+        });
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = `Productos_Margen_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        this.showToast('CSV exportado con éxito', 'success');
+    }
+
 }
 
 // Initialize App
