@@ -9,7 +9,7 @@ class AccountsApp {
         this.isSignUp = false;
         this.clients = [];
         this.transactions = [];
-        this.currentViewId = 'dashboard-view';
+        this.currentViewId = localStorage.getItem('ar_current_view') || 'dashboard-view';
         this.currentClientId = null;
         this.exchangeRate = parseFloat(localStorage.getItem('ar_exchange_rate')) || 1;
         this.exchangeRateEUR = parseFloat(localStorage.getItem('ar_exchange_rate_eur')) || 1;
@@ -618,6 +618,8 @@ class AccountsApp {
 
     async handleLogout() {
         await this.supabase.auth.signOut();
+        localStorage.removeItem('ar_current_view');
+        this.currentViewId = 'dashboard-view';
         this.handleAuthStateChange(null);
         this.showToast('Sesión cerrada');
     }
@@ -758,7 +760,14 @@ class AccountsApp {
     async saveData() {
         // In this version, saveData is for updating the UI after remote sync
         await this.syncWithSupabase();
-        this.renderDashboard();
+        
+        // Si hay una vista guardada distinta a dashboard, restaurarla
+        if (this.currentViewId && this.currentViewId !== 'dashboard-view' && document.getElementById(this.currentViewId)) {
+            this._executeSwitchView(this.currentViewId);
+        } else {
+            this.renderDashboard();
+        }
+
         if (this.currentClientId && this.currentViewId === 'client-profile-view') {
             this.renderClientProfile(this.currentClientId);
         }
@@ -1107,23 +1116,23 @@ class AccountsApp {
         if (navBtn) navBtn.classList.add('active');
 
         // Toggle Sections
-        const currentSection = document.getElementById(this.currentViewId);
-        const targetSection = document.getElementById(viewId);
+        document.querySelectorAll('.view-section').forEach(sec => {
+            if (sec.id !== viewId) {
+                sec.classList.remove('active', 'fade-in', 'fade-out');
+            }
+        });
 
-        if (currentSection && currentSection !== targetSection) {
-            currentSection.classList.add('fade-out');
-            setTimeout(() => {
-                currentSection.classList.remove('active', 'fade-out');
-                if (targetSection) {
-                    targetSection.classList.add('active', 'fade-in');
-                    setTimeout(() => targetSection.classList.remove('fade-in'), 300);
-                }
-            }, 300);
-        } else if (targetSection) {
+        const targetSection = document.getElementById(viewId);
+        if (targetSection) {
             targetSection.classList.add('active');
         }
 
         this.currentViewId = viewId;
+
+        // Persistir vista activa en localStorage para sobrevivir a F5
+        if (viewId && viewId !== 'add-client-view' && (viewId !== 'client-profile-view' || this.currentClientId)) {
+            localStorage.setItem('ar_current_view', viewId);
+        }
 
         // Update Mobile Nav Active State
         document.querySelectorAll('.mobile-nav-item').forEach(btn => {
