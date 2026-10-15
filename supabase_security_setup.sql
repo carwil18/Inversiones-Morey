@@ -33,3 +33,30 @@ ALTER COLUMN user_id SET DEFAULT auth.uid();
 -- Si no existen, puedes crearlas con:
 -- ALTER TABLE clients ADD COLUMN IF NOT EXISTS user_id uuid references auth.users not null;
 -- ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id uuid references auth.users not null;
+
+-- ============================================================
+-- TABLA: margin_products (Calculadora de Margen de Ganancia)
+-- Ejecuta este bloque en el SQL Editor de Supabase
+-- ============================================================
+
+-- 1. Crear tabla
+CREATE TABLE IF NOT EXISTS public.margin_products (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL DEFAULT auth.uid(),
+    name        text NOT NULL,
+    cost        numeric(12, 4) NOT NULL,
+    margin      numeric(6, 4) NOT NULL,
+    profit      numeric(12, 4) NOT NULL,
+    sale_price  numeric(12, 4) NOT NULL,
+    created_at  timestamptz DEFAULT now() NOT NULL
+);
+
+-- 2. Habilitar Row Level Security
+ALTER TABLE public.margin_products ENABLE ROW LEVEL SECURITY;
+
+-- 3. Política: cada usuario solo ve y gestiona sus propios productos
+CREATE POLICY "Users can manage their own margin products"
+ON public.margin_products
+FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);

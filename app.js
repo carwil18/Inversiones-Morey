@@ -2625,16 +2625,15 @@ class AccountsApp {
         this.showToast('Archivo CSV exportado con éxito');
     }
     // ==========================================
-    // MARGIN CALCULATOR MODULE
+    // MARGIN CALCULATOR MODULE — Supabase Backend
     // ==========================================
 
     initMarginCalculator() {
-        // Load stored products
-        this.marginProducts = JSON.parse(localStorage.getItem('ar_margin_products')) || [];
+        this.marginProducts = [];
 
         // Wire inputs for live calculation
         const costInput = document.getElementById('marginCost');
-        const pctInput = document.getElementById('marginPercent');
+        const pctInput  = document.getElementById('marginPercent');
 
         if (costInput) costInput.addEventListener('input', () => this.calcMargin());
         if (pctInput)  pctInput.addEventListener('input',  () => this.calcMargin());
@@ -2643,7 +2642,6 @@ class AccountsApp {
         document.querySelectorAll('.btn-preset').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.getElementById('marginPercent').value = btn.dataset.margin;
-                // Highlight active preset
                 document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
                 this.calcMargin();
@@ -2666,7 +2664,41 @@ class AccountsApp {
         const exportBtn = document.getElementById('marginExportCSVBtn');
         if (exportBtn) exportBtn.addEventListener('click', () => this.exportMarginCSV());
 
-        this.renderMarginProducts();
+        // Load from Supabase
+        this.fetchMarginProducts();
+    }
+
+    async fetchMarginProducts() {
+        if (!this.user) return;
+        const tbody = document.getElementById('marginProductsTableBody');
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;"><i class="ph ph-circle-notch" style="animation:rotate 1s linear infinite; font-size:1.4rem;"></i></td></tr>`;
+
+        try {
+            const { data, error } = await this.supabase
+                .from('margin_products')
+                .select('*')
+                .eq('user_id', this.user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            // Map snake_case → camelCase para consistencia interna
+            this.marginProducts = (data || []).map(p => ({
+                id:        p.id,
+                name:      p.name,
+                cost:      parseFloat(p.cost),
+                margin:    parseFloat(p.margin),
+                profit:    parseFloat(p.profit),
+                salePrice: parseFloat(p.sale_price),
+                savedAt:   p.created_at,
+            }));
+
+            this.renderMarginProducts();
+        } catch (err) {
+            console.error('Error cargando productos de margen:', err);
+            this.showToast('Error al cargar productos desde Supabase', 'error');
+            this.renderMarginProducts();
+        }
     }
 
     calcMargin() {
@@ -2682,26 +2714,24 @@ class AccountsApp {
             return;
         }
 
-        // Profit margin formula: Sale Price = Cost / (1 - margin%)
+        // Profit margin formula: Sale Price = Cost / (1 − margin%)
         const salePrice = cost / (1 - pct / 100);
         const profit    = salePrice - cost;
 
-        // Populate result
-        document.getElementById('resCosto').textContent       = this.formatCurrency(cost);
-        document.getElementById('resGanancia').textContent    = this.formatCurrency(profit);
-        document.getElementById('resPrecioVenta').textContent = this.formatCurrency(salePrice);
-        document.getElementById('resUnidad').textContent      = this.formatCurrency(salePrice);
+        document.getElementById('resCosto').textContent        = this.formatCurrency(cost);
+        document.getElementById('resGanancia').textContent     = this.formatCurrency(profit);
+        document.getElementById('resPrecioVenta').textContent  = this.formatCurrency(salePrice);
+        document.getElementById('resUnidad').textContent       = this.formatCurrency(salePrice);
         document.getElementById('resGananciaUnit').textContent = this.formatCurrency(profit);
         document.getElementById('resMarginDisplay').textContent = pct.toFixed(1);
 
         panel.classList.remove('hidden');
         saveForm.style.display = 'block';
 
-        // Store current calculation for saving
         this._currentCalc = { cost, pct, salePrice, profit };
     }
 
-    saveMarginProduct() {
+    async saveMarginProduct() {
         if (!this._currentCalc) {
             this.showToast('Primero realiza un cálculo', 'warning');
             return;
@@ -2715,29 +2745,79 @@ class AccountsApp {
             return;
         }
 
-        const { cost, pct, salePrice, profit } = this._currentCalc;
-        const product = {
-            id: Date.now().toString(),
-            name,
-            cost,
-            margin: pct,
-            profit,
-            salePrice,
-            savedAt: new Date().toISOString()
-        };
+        if (!this.user) {
+            this.showToast('Debes iniciar sesión para guardar productos', 'error');
+            return;
+        }
 
-        this.marginProducts.unshift(product);
-        localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
-        this.renderMarginProducts();
-        nameInput.value = '';
-        this.showToast(`"${this.escapeHTML(name)}" guardado con éxito`, 'success');
+        const saveBtn = document.getElementById('marginSaveBtn');
+        if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="ph ph-circle-notch" style="animation:rotate 1s linear infinite;"></i> Guardando...'; }
+
+        const { cost, pct, salePrice, profit } = this._currentCalc;
+
+        try {
+            const { data, error } = await this.supabase
+                .from('margin_products')
+                .insert({
+                    user_id:    this.user.id,
+                    name:       name,
+                    cost:       cost,
+                    margin:     pct,
+                    profit:     profit,
+                    sale_price: salePrice,
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // Add to local array (top)
+            this.marginProducts.unshift({
+                id:        data.id,
+                name:      data.name,
+                cost:      parseFloat(data.cost),
+                margin:    parseFloat(data.margin),
+                profit:    parseFloat(data.profit),
+                salePrice: parseFloat(data.sale_price),
+                savedAt:   data.created_at,
+            });
+
+            this.renderMarginProducts();
+            nameInput.value = '';
+            this.showToast(`"${this.escapeHTML(name)}" guardado con éxito`, 'success');
+        } catch (err) {
+            console.error('Error guardando producto:', err);
+            // Si la tabla no existe aún, avisa con mensaje claro
+            if (err.code === '42P01') {
+                this.showToast('La tabla margin_products no existe. Ejecuta el SQL en Supabase primero.', 'error');
+            } else {
+                this.showToast('Error al guardar en Supabase: ' + (err.message || ''), 'error');
+            }
+        } finally {
+            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="ph ph-floppy-disk"></i> Guardar Producto'; }
+        }
     }
 
-    deleteMarginProduct(id) {
-        this.marginProducts = this.marginProducts.filter(p => p.id !== id);
-        localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
-        this.renderMarginProducts();
-        this.showToast('Producto eliminado', 'info');
+    async deleteMarginProduct(id) {
+        const confirmed = await this.confirmAction('Eliminar Producto', '¿Seguro que deseas eliminar este producto de la lista?', true);
+        if (!confirmed) return;
+
+        try {
+            const { error } = await this.supabase
+                .from('margin_products')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', this.user.id);
+
+            if (error) throw error;
+
+            this.marginProducts = this.marginProducts.filter(p => p.id !== id);
+            this.renderMarginProducts();
+            this.showToast('Producto eliminado', 'info');
+        } catch (err) {
+            console.error('Error eliminando producto:', err);
+            this.showToast('Error al eliminar el producto', 'error');
+        }
     }
 
     loadMarginProduct(id) {
@@ -2745,18 +2825,16 @@ class AccountsApp {
         if (!product) return;
         document.getElementById('marginCost').value    = product.cost;
         document.getElementById('marginPercent').value = product.margin;
-        // Update preset highlights
         document.querySelectorAll('.btn-preset').forEach(b => {
             b.classList.toggle('active', parseFloat(b.dataset.margin) === product.margin);
         });
         this.calcMargin();
-        // Scroll to top of calculator
         document.querySelector('.margin-calc-card').scrollIntoView({ behavior: 'smooth' });
     }
 
     renderMarginProducts(filter = '') {
-        const tbody    = document.getElementById('marginProductsTableBody');
-        const empty    = document.getElementById('emptyMarginState');
+        const tbody = document.getElementById('marginProductsTableBody');
+        const empty = document.getElementById('emptyMarginState');
         if (!tbody) return;
 
         const term = filter.toLowerCase().trim();
