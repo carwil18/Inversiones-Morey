@@ -2209,6 +2209,19 @@ select.select-sm {
     color: var(--text-primary);
 }
 
+.result-value-vef {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-top: 1px;
+}
+
+.result-value-vef.large {
+    font-size: 0.85rem;
+    color: var(--accent-green);
+    font-weight: 600;
+}
+
 .result-value.large {
     font-size: 1.4rem;
     color: var(--accent-blue);

@@ -943,6 +943,13 @@ class AccountsApp {
         if (this.currentClientId && this.currentViewId === 'client-profile-view') {
             this.renderClientProfile(this.currentClientId);
         }
+
+        if (this.currentViewId === 'margin-calc-view') {
+            this.renderMarginProducts();
+            if (this._currentCalc) {
+                this.calcMargin();
+            }
+        }
     }
 
     setActiveCurrency(curr) {
@@ -2718,12 +2725,22 @@ class AccountsApp {
         const salePrice = cost / (1 - pct / 100);
         const profit    = salePrice - cost;
 
+        // USD values
         document.getElementById('resCosto').textContent        = this.formatCurrency(cost);
         document.getElementById('resGanancia').textContent     = this.formatCurrency(profit);
         document.getElementById('resPrecioVenta').textContent  = this.formatCurrency(salePrice);
         document.getElementById('resUnidad').textContent       = this.formatCurrency(salePrice);
         document.getElementById('resGananciaUnit').textContent = this.formatCurrency(profit);
         document.getElementById('resMarginDisplay').textContent = pct.toFixed(1);
+
+        // VEF (Bs.) values
+        const resCostoVEF = document.getElementById('resCostoVEF');
+        const resGananciaVEF = document.getElementById('resGananciaVEF');
+        const resPrecioVentaVEF = document.getElementById('resPrecioVentaVEF');
+
+        if (resCostoVEF) resCostoVEF.textContent = this.formatVEF(cost);
+        if (resGananciaVEF) resGananciaVEF.textContent = this.formatVEF(profit);
+        if (resPrecioVentaVEF) resPrecioVentaVEF.textContent = this.formatVEF(salePrice);
 
         panel.classList.remove('hidden');
         saveForm.style.display = 'block';
@@ -2851,17 +2868,29 @@ class AccountsApp {
         list.forEach(p => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td><strong>${this.escapeHTML(p.name)}</strong><br><span class="text-xs" style="color:var(--text-muted);">${new Date(p.savedAt).toLocaleDateString()}</span></td>
-                <td>${this.formatCurrency(p.cost)}</td>
+                <td>
+                    <strong>${this.escapeHTML(p.name)}</strong><br>
+                    <span class="text-xs" style="color:var(--text-muted);">${new Date(p.savedAt).toLocaleDateString()}</span>
+                </td>
+                <td>
+                    <div>${this.formatCurrency(p.cost)}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${this.formatVEF(p.cost)}</div>
+                </td>
                 <td><span class="badge-status success">${p.margin.toFixed(1)}%</span></td>
-                <td style="color: var(--accent-green);">${this.formatCurrency(p.profit)}</td>
-                <td><strong style="color: var(--accent-blue); font-size: 1rem;">${this.formatCurrency(p.salePrice)}</strong></td>
+                <td>
+                    <div style="color: var(--accent-green); font-weight: 500;">${this.formatCurrency(p.profit)}</div>
+                    <div style="font-size:0.75rem; color:var(--text-muted);">${this.formatVEF(p.profit)}</div>
+                </td>
+                <td>
+                    <strong style="color: var(--accent-blue); font-size: 1.05rem; display: block;">${this.formatCurrency(p.salePrice)}</strong>
+                    <span style="font-size: 0.78rem; color: var(--accent-green); font-weight: 600;">${this.formatVEF(p.salePrice)}</span>
+                </td>
                 <td>
                     <div style="display:flex; gap:0.4rem;">
-                        <button class="icon-btn-sm" title="Cargar en calculadora" onclick="app.loadMarginProduct('${p.id}')">
+                        <button class="icon-btn-sm" title="Cargar en calculadora" onclick="app.loadMarginProduct('${p.id}')" aria-label="Cargar en calculadora">
                             <i class="ph ph-arrow-square-up-left"></i>
                         </button>
-                        <button class="icon-btn-sm" title="Eliminar" style="color:var(--accent-red);" onclick="app.deleteMarginProduct('${p.id}')">
+                        <button class="icon-btn-sm" title="Eliminar" style="color:var(--accent-red);" onclick="app.deleteMarginProduct('${p.id}')" aria-label="Eliminar producto">
                             <i class="ph ph-trash"></i>
                         </button>
                     </div>
