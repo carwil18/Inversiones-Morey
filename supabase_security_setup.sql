@@ -1,62 +1,66 @@
--- INVERSIONES MOREY: SQL Security Setup
--- Ejecuta este script en el "SQL Editor" de tu panel de Supabase para asegurar tus datos.
+-- ============================================================
+-- INVERSIONES MOREY: SQL Security & Performance Setup
+-- Ejecuta este script en el "SQL Editor" de tu panel de Supabase
+-- ============================================================
 
--- 1. Habilitar RLS (Row Level Security) en las tablas
+-- 1. Habilitar RLS (Row Level Security) en todas las tablas
 ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.margin_products ENABLE ROW LEVEL SECURITY;
 
--- 2. Políticas para la tabla "clients"
--- Permite a los usuarios gestionar solo sus propios clientes
+-- 2. Asegurar columnas user_id con DEFAULT auth.uid()
+ALTER TABLE public.clients 
+    ALTER COLUMN user_id SET DEFAULT auth.uid();
+
+ALTER TABLE public.transactions 
+    ALTER COLUMN user_id SET DEFAULT auth.uid();
+
+-- 3. Índices de rendimiento (Acelera búsquedas y filtrados de cada usuario)
+CREATE INDEX IF NOT EXISTS idx_clients_user_id 
+    ON public.clients (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_user_id 
+    ON public.transactions (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_client_id 
+    ON public.transactions (client_id);
+
+CREATE INDEX IF NOT EXISTS idx_transactions_created_at 
+    ON public.transactions (created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_margin_products_user_id 
+    ON public.margin_products (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_margin_products_created_at 
+    ON public.margin_products (created_at DESC);
+
+-- 4. Políticas para la tabla "clients"
+DROP POLICY IF EXISTS "Users can manage their own clients" ON public.clients;
 CREATE POLICY "Users can manage their own clients" 
 ON public.clients 
 FOR ALL 
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
--- 3. Políticas para la tabla "transactions"
--- Permite a los usuarios gestionar solo sus propias transacciones
+-- 5. Políticas para la tabla "transactions"
+DROP POLICY IF EXISTS "Users can manage their own transactions" ON public.transactions;
 CREATE POLICY "Users can manage their own transactions" 
 ON public.transactions 
 FOR ALL 
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
 
--- 4. Protección adicional: Forzar que el user_id sea el del usuario autenticado
--- Esto evita que alguien intente guardar datos a nombre de otro usuario
-ALTER TABLE public.clients 
-ALTER COLUMN user_id SET DEFAULT auth.uid();
-
-ALTER TABLE public.transactions 
-ALTER COLUMN user_id SET DEFAULT auth.uid();
-
--- NOTA: Asegúrate de que las columnas 'user_id' existen y son de tipo 'uuid'.
--- Si no existen, puedes crearlas con:
--- ALTER TABLE clients ADD COLUMN IF NOT EXISTS user_id uuid references auth.users not null;
--- ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id uuid references auth.users not null;
-
--- ============================================================
--- TABLA: margin_products (Calculadora de Margen de Ganancia)
--- Ejecuta este bloque en el SQL Editor de Supabase
--- ============================================================
-
--- 1. Crear tabla
-CREATE TABLE IF NOT EXISTS public.margin_products (
-    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL DEFAULT auth.uid(),
-    name        text NOT NULL,
-    cost        numeric(12, 4) NOT NULL,
-    margin      numeric(6, 4) NOT NULL,
-    profit      numeric(12, 4) NOT NULL,
-    sale_price  numeric(12, 4) NOT NULL,
-    created_at  timestamptz DEFAULT now() NOT NULL
-);
-
--- 2. Habilitar Row Level Security
-ALTER TABLE public.margin_products ENABLE ROW LEVEL SECURITY;
-
--- 3. Política: cada usuario solo ve y gestiona sus propios productos
+-- 6. Políticas para la tabla "margin_products"
+DROP POLICY IF EXISTS "Users can manage their own margin products" ON public.margin_products;
 CREATE POLICY "Users can manage their own margin products"
 ON public.margin_products
 FOR ALL
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
+
+-- NOTA RECOMENDADA PARA INTEGRIDAD DE DATOS:
+-- Si deseas que al eliminar un cliente se borren automáticamente sus transacciones huérfanas:
+-- ALTER TABLE public.transactions
+--     DROP CONSTRAINT IF EXISTS fk_transactions_client,
+--     ADD CONSTRAINT fk_transactions_client 
+--     FOREIGN KEY (client_id) REFERENCES public.clients(id) ON DELETE CASCADE;

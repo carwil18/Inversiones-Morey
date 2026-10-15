@@ -54,7 +54,7 @@
                     <div class="input-with-icon">
                         <i class="ph ph-lock"></i>
                         <input type="password" id="loginPassword" required placeholder="••••••••">
-                        <button type="button" class="btn-password-toggle" id="togglePasswordVisibility">
+                        <button type="button" class="btn-password-toggle" id="togglePasswordVisibility" aria-label="Mostrar u ocultar contraseña">
                             <i class="ph ph-eye"></i>
                         </button>
                     </div>
@@ -80,7 +80,7 @@
             <div class="sidebar-mobile-header">
                 <i class="ph ph-wallet"></i>
                 <h2>Inversiones Morey</h2>
-                <button class="btn-icon-close" id="closeSidebarBtn">
+                <button class="btn-icon-close" id="closeSidebarBtn" aria-label="Cerrar menú lateral">
                     <i class="ph ph-x"></i>
                 </button>
             </div>
@@ -112,10 +112,10 @@
                 </button>
             </nav>
             <div class="sidebar-footer">
-                <button class="btn btn-text theme-toggle-btn" id="themeToggleBtn">
+                <button class="btn btn-text theme-toggle-btn" id="themeToggleBtn" aria-label="Alternar tema oscuro o claro">
                     <i class="ph ph-sun"></i> <span id="themeToggleText">Modo Claro</span>
                 </button>
-                <button class="btn btn-text btn-danger logout-btn" id="logoutBtn">
+                <button class="btn btn-text btn-danger logout-btn" id="logoutBtn" aria-label="Cerrar sesión">
                     <i class="ph ph-sign-out"></i> Cerrar Sesión
                 </button>
                 <p>Generado By Carwil</p>
@@ -126,11 +126,11 @@
         <main class="main-content">
             <header class="top-header">
                 <div class="header-left">
-                    <button class="btn-icon-menu" id="openSidebarBtn">
+                    <button class="btn-icon-menu" id="openSidebarBtn" aria-label="Abrir menú lateral">
                         <i class="ph ph-list"></i>
                     </button>
                     <h1>Dashboard</h1>
-                    <button class="btn-icon-logout show-mobile" id="logoutBtnMobile" title="Cerrar Sesión">
+                    <button class="btn-icon-logout show-mobile" id="logoutBtnMobile" title="Cerrar Sesión" aria-label="Cerrar Sesión">
                         <i class="ph ph-sign-out"></i>
                     </button>
                 </div>
@@ -147,8 +147,8 @@
                             </div>
                             <div class="rate-value-group">
                                 <span class="rate-symbol" id="headerRateSymbol">$</span>
-                                <input type="number" id="exchangeRateInput" step="0.01" placeholder="0.00"
-                                    title="Editar tasa manualmente">
+                                <input type="number" id="exchangeRateInput" step="0.01" inputmode="decimal" placeholder="0.00"
+                                    title="Editar tasa manualmente" aria-label="Tasa de cambio BCV">
                                 <span class="rate-currency">Bs.</span>
                             </div>
                         </div>
@@ -158,7 +158,7 @@
                                     vector-effect="non-scaling-stroke"></path>
                             </svg>
                         </div>
-                        <button id="syncRateBtn" class="sync-btn-modern" title="Sincronizar con BCV">
+                        <button id="syncRateBtn" class="sync-btn-modern" title="Sincronizar con BCV" aria-label="Sincronizar tasa con el BCV">
                             <i class="ph ph-arrows-clockwise"></i>
                         </button>
                     </div>
@@ -474,15 +474,15 @@
                                 <div>
                                     <div style="display: flex; align-items: center; gap: 10px;">
                                         <h2 id="profileName">Juan Pérez</h2>
-                                        <button class="icon-btn-sm" id="editClientBtn" title="Editar Cliente"
+                                        <button class="icon-btn-sm" id="editClientBtn" title="Editar Cliente" aria-label="Editar Cliente"
                                             onclick="app.prepareEditClient()">
                                             <i class="ph ph-pencil-simple"></i>
                                         </button>
-                                        <button class="icon-btn-sm" id="deleteClientBtn" title="Eliminar Cliente"
+                                        <button class="icon-btn-sm" id="deleteClientBtn" title="Eliminar Cliente" aria-label="Eliminar Cliente"
                                             onclick="app.deleteCurrentClient()" style="color: var(--accent-red);">
                                             <i class="ph ph-trash"></i>
                                         </button>
-                                        <button class="icon-btn-sm" id="whatsappClientBtn" title="Enviar WhatsApp"
+                                        <button class="icon-btn-sm" id="whatsappClientBtn" title="Enviar WhatsApp" aria-label="Enviar recordatorio por WhatsApp"
                                             style="color: #25D366; background: rgba(37, 211, 102, 0.1); border: 1px solid rgba(37, 211, 102, 0.2); text-decoration: none; display: flex; align-items: center; justify-content: center;"
                                             onclick="app.openWhatsAppTemplates()">
                                             <i class="ph ph-whatsapp-logo" style="font-size: 1.25rem;"></i>
@@ -676,7 +676,7 @@
                                 <label for="convUSD" id="convInputLabel">Dólares ($)</label>
                                 <div class="input-with-icon">
                                     <i class="ph ph-currency-dollar" id="convInputIcon"></i>
-                                    <input type="number" id="convUSD" step="0.01" placeholder="0.00">
+                                    <input type="number" id="convUSD" step="0.01" inputmode="decimal" placeholder="0.00">
                                 </div>
                             </div>
 
@@ -688,7 +688,7 @@
                                 <label for="convVEF">Bolívares (Bs.)</label>
                                 <div class="input-with-icon">
                                     <i class="ph ph-coins"></i>
-                                    <input type="number" id="convVEF" step="0.01" placeholder="0.00">
+                                    <input type="number" id="convVEF" step="0.01" inputmode="decimal" placeholder="0.00">
                                 </div>
                             </div>
 
@@ -720,14 +720,14 @@
                                     <label for="marginCost">Costo del Producto ($)</label>
                                     <div class="input-with-icon">
                                         <i class="ph ph-currency-dollar"></i>
-                                        <input type="number" id="marginCost" step="0.01" min="0" placeholder="0.00">
+                                        <input type="number" id="marginCost" step="0.01" min="0" inputmode="decimal" placeholder="0.00">
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label for="marginPercent">Margen de Ganancia (%)</label>
                                     <div class="input-with-icon">
                                         <i class="ph ph-percent"></i>
-                                        <input type="number" id="marginPercent" step="0.1" min="0" max="99.9" placeholder="30">
+                                        <input type="number" id="marginPercent" step="0.1" min="0" max="99.9" inputmode="decimal" placeholder="30">
                                     </div>
                                 </div>
                             </div>
@@ -833,7 +833,7 @@
         <div class="glass-card modal-content" style="max-width: 450px;">
             <div class="modal-header">
                 <h3>Enviar Recordatorio</h3>
-                <button class="icon-btn" onclick="app.closeWhatsAppTemplates()"><i class="ph ph-x"></i></button>
+                <button class="icon-btn" onclick="app.closeWhatsAppTemplates()" aria-label="Cerrar modal"><i class="ph ph-x"></i></button>
             </div>
             <div style="display: flex; flex-direction: column; gap: 1rem;">
                 <p class="text-sm" style="color: var(--text-secondary);">Selecciona una plantilla para enviar a <strong id="waClientName"></strong>:</p>
@@ -876,7 +876,7 @@
         <div id="updatePwdModalContent" class="glass-card modal-content">
             <div class="modal-header">
                 <h3>Actualizar Contraseña</h3>
-                <button class="icon-btn" id="closeUpdatePwdBtn"><i class="ph ph-x"></i></button>
+                <button class="icon-btn" id="closeUpdatePwdBtn" aria-label="Cerrar modal"><i class="ph ph-x"></i></button>
             </div>
             <form id="updatePwdForm">
                 <div class="form-group">
@@ -914,7 +914,7 @@
         <div class="glass-card modal-content">
             <div class="modal-header">
                 <h3 id="txModalTitle">Registrar Transacción</h3>
-                <button class="icon-btn close-modal"><i class="ph ph-x"></i></button>
+                <button class="icon-btn close-modal" aria-label="Cerrar modal"><i class="ph ph-x"></i></button>
             </div>
             <form id="transactionForm">
                 <input type="hidden" id="txId">
@@ -937,32 +937,32 @@
                         <!-- 5 rows of items -->
                         <div class="item-row">
                             <input type="text" class="item-desc" placeholder="Producto 1">
-                            <input type="number" class="item-qty" placeholder="1" min="1">
-                            <input type="number" class="item-price" step="0.01" placeholder="0.00">
+                            <input type="number" class="item-qty" placeholder="1" min="1" inputmode="numeric">
+                            <input type="number" class="item-price" step="0.01" inputmode="decimal" placeholder="0.00">
                             <span class="item-subtotal">$0.00</span>
                         </div>
                         <div class="item-row">
                             <input type="text" class="item-desc" placeholder="Producto 2">
-                            <input type="number" class="item-qty" placeholder="1" min="1">
-                            <input type="number" class="item-price" step="0.01" placeholder="0.00">
+                            <input type="number" class="item-qty" placeholder="1" min="1" inputmode="numeric">
+                            <input type="number" class="item-price" step="0.01" inputmode="decimal" placeholder="0.00">
                             <span class="item-subtotal">$0.00</span>
                         </div>
                         <div class="item-row">
                             <input type="text" class="item-desc" placeholder="Producto 3">
-                            <input type="number" class="item-qty" placeholder="1" min="1">
-                            <input type="number" class="item-price" step="0.01" placeholder="0.00">
+                            <input type="number" class="item-qty" placeholder="1" min="1" inputmode="numeric">
+                            <input type="number" class="item-price" step="0.01" inputmode="decimal" placeholder="0.00">
                             <span class="item-subtotal">$0.00</span>
                         </div>
                         <div class="item-row">
                             <input type="text" class="item-desc" placeholder="Producto 4">
-                            <input type="number" class="item-qty" placeholder="1" min="1">
-                            <input type="number" class="item-price" step="0.01" placeholder="0.00">
+                            <input type="number" class="item-qty" placeholder="1" min="1" inputmode="numeric">
+                            <input type="number" class="item-price" step="0.01" inputmode="decimal" placeholder="0.00">
                             <span class="item-subtotal">$0.00</span>
                         </div>
                         <div class="item-row">
                             <input type="text" class="item-desc" placeholder="Producto 5">
-                            <input type="number" class="item-qty" placeholder="1" min="1">
-                            <input type="number" class="item-price" step="0.01" placeholder="0.00">
+                            <input type="number" class="item-qty" placeholder="1" min="1" inputmode="numeric">
+                            <input type="number" class="item-price" step="0.01" inputmode="decimal" placeholder="0.00">
                             <span class="item-subtotal">$0.00</span>
                         </div>
                     </div>
@@ -973,7 +973,7 @@
                         <label for="txAmount">Monto Total *</label>
                         <div class="input-with-icon">
                             <i class="ph ph-currency-dollar" id="txAmountIcon"></i>
-                            <input type="number" id="txAmount" step="0.01" min="0.01" required placeholder="0.00">
+                            <input type="number" id="txAmount" step="0.01" min="0.01" inputmode="decimal" required placeholder="0.00">
                         </div>
                     </div>
                     <div class="form-group" id="txPaymentMethodGroup">
@@ -1012,21 +1012,25 @@
 
     <!-- Mobile Bottom Navigation -->
     <nav class="mobile-bottom-nav">
-        <button class="mobile-nav-item active" data-target="dashboard-view">
+        <button class="mobile-nav-item active" data-target="dashboard-view" aria-label="Ir a Dashboard">
             <i class="ph ph-squares-four"></i>
             <span>Inicio</span>
         </button>
-        <button class="mobile-nav-item" data-target="clients-view">
+        <button class="mobile-nav-item" data-target="clients-view" aria-label="Ir a Clientes">
             <i class="ph ph-users"></i>
             <span>Clientes</span>
         </button>
-        <button class="mobile-nav-item" data-target="transactions-view">
+        <button class="mobile-nav-item" data-target="transactions-view" aria-label="Ir a Historial">
             <i class="ph ph-receipt"></i>
             <span>Historial</span>
         </button>
-        <button class="mobile-nav-item" data-target="converter-view">
+        <button class="mobile-nav-item" data-target="converter-view" aria-label="Ir a Conversor">
             <i class="ph ph-arrows-left-right"></i>
             <span>Conversor</span>
+        </button>
+        <button class="mobile-nav-item" data-target="margin-calc-view" aria-label="Ir a Margen de Ganancia">
+            <i class="ph ph-percent"></i>
+            <span>Margen</span>
         </button>
     </nav>
 
