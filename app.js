@@ -62,6 +62,7 @@ class AccountsApp {
         this.updateHeaderUI();
         this.bindEvents();
         this.bindAuthEvents();
+        this.applyInitialView(); // Aplicar vista guardada inmediatamente sin parpadeo
 
         // Check for existing session
         const { data: { session } } = await this.supabase.auth.getSession();
@@ -761,11 +762,15 @@ class AccountsApp {
         // In this version, saveData is for updating the UI after remote sync
         await this.syncWithSupabase();
         
-        // Si hay una vista guardada distinta a dashboard, restaurarla
-        if (this.currentViewId && this.currentViewId !== 'dashboard-view' && document.getElementById(this.currentViewId)) {
-            this._executeSwitchView(this.currentViewId);
-        } else {
+        // Refrescar los datos de la vista que ya está activa
+        if (this.currentViewId === 'dashboard-view') {
             this.renderDashboard();
+        } else if (this.currentViewId === 'clients-view') {
+            this.renderClientsTable(document.getElementById('globalSearchInput')?.value || '');
+        } else if (this.currentViewId === 'transactions-view') {
+            this.renderGlobalTransactions();
+        } else if (this.currentViewId === 'margin-calc-view') {
+            this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
         }
 
         if (this.currentClientId && this.currentViewId === 'client-profile-view') {
@@ -1097,6 +1102,49 @@ class AccountsApp {
     }
 
     // --- Navigation & Views ---
+
+    applyInitialView() {
+        const viewId = this.currentViewId || 'dashboard-view';
+        const targetSection = document.getElementById(viewId);
+        if (!targetSection) return;
+
+        // Conmutar secciones inmediatamente sin animaciones
+        document.querySelectorAll('.view-section').forEach(sec => {
+            sec.classList.remove('active', 'fade-in', 'fade-out');
+        });
+        targetSection.classList.add('active');
+
+        // Conmutar botones de navegación sidebar
+        document.querySelectorAll('.nav-item').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.target === viewId);
+        });
+
+        // Conmutar botones de navegación móvil
+        document.querySelectorAll('.mobile-nav-item').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.target === viewId);
+        });
+
+        // Actualizar título en top-header
+        const topHeaderTitle = document.querySelector('.top-header h1');
+        if (topHeaderTitle) {
+            const titles = {
+                'dashboard-view': 'Dashboard',
+                'clients-view': 'Mis Clientes',
+                'add-client-view': 'Nuevo Cliente',
+                'client-profile-view': 'Perfil de Cliente',
+                'transactions-view': 'Historial de Transacciones',
+                'converter-view': 'Convertidor',
+                'data-management-view': 'Base de Datos',
+                'margin-calc-view': 'Margen de Ganancia'
+            };
+            topHeaderTitle.textContent = titles[viewId] || 'Dashboard';
+        }
+
+        if (viewId === 'margin-calc-view' && !this._marginCalcInitialized) {
+            this.initMarginCalculator();
+            this._marginCalcInitialized = true;
+        }
+    }
 
     switchView(viewId) {
         this.vibrate([20]);
