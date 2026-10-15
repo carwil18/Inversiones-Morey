@@ -973,14 +973,29 @@ class AccountsApp {
 
         // Update Global Icons
         const iconClass = curr === 'EUR' ? 'ph ph-currency-eur' : 'ph ph-currency-dollar';
+        const symbol = curr === 'EUR' ? '€' : '$';
         document.getElementById('debtCardIcon').className = iconClass;
         document.getElementById('txAmountIcon').className = iconClass;
+
+        // Update Margin Calculator Currency Labels
+        const marginCostLabel = document.getElementById('marginCostLabel');
+        const marginCostIcon = document.getElementById('marginCostIcon');
+        if (marginCostLabel) marginCostLabel.textContent = `Costo del Producto (${symbol})`;
+        if (marginCostIcon) marginCostIcon.className = `ph ${curr === 'EUR' ? 'ph-currency-eur' : 'ph-currency-dollar'}`;
 
         this.renderDashboard();
         this.renderClientsTable(document.getElementById('globalSearchInput').value);
 
         if (this.currentClientId && this.currentViewId === 'client-profile-view') {
             this.renderClientProfile(this.currentClientId);
+        }
+
+        // Sincronizar inmediatamente la Calculadora de Margen
+        if (this.marginProducts && this.marginProducts.length > 0) {
+            this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
+        }
+        if (this._currentCalc) {
+            this.calcMargin();
         }
     }
 
@@ -1018,10 +1033,16 @@ class AccountsApp {
         document.getElementById('rateLabel').textContent = `Tasa BCV (${this.activeCurrency})`;
 
         const iconClass = this.activeCurrency === 'EUR' ? 'ph ph-currency-eur' : 'ph ph-currency-dollar';
+        const symbol = this.activeCurrency === 'EUR' ? '€' : '$';
         const debtCardIcon = document.getElementById('debtCardIcon');
         const txAmountIcon = document.getElementById('txAmountIcon');
         if (debtCardIcon) debtCardIcon.className = iconClass;
         if (txAmountIcon) txAmountIcon.className = iconClass;
+
+        const marginCostLabel = document.getElementById('marginCostLabel');
+        const marginCostIcon = document.getElementById('marginCostIcon');
+        if (marginCostLabel) marginCostLabel.textContent = `Costo del Producto (${symbol})`;
+        if (marginCostIcon) marginCostIcon.className = `ph ${this.activeCurrency === 'EUR' ? 'ph-currency-eur' : 'ph-currency-dollar'}`;
     }
 
     renderSparkline() {
