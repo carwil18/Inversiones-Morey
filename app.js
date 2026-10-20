@@ -3267,28 +3267,23 @@ class AccountsApp {
         };
         const periodText = periodLabels[period] || 'Todos los registros';
 
-        // Elemento temporal adjunto al DOM para medición exacta en cualquier pantalla
+        // Elemento temporal para html2pdf (ancho 800px ajustado a A4 con margin 0)
         const container = document.createElement('div');
-        container.id = 'tempMarginPdfContainer';
-        container.style.position = 'fixed';
-        container.style.left = '-9999px';
-        container.style.top = '0';
-        container.style.width = '700px';
-        container.style.maxWidth = '700px';
+        container.style.width = '800px';
         container.style.boxSizing = 'border-box';
-        container.style.padding = '20px 25px';
+        container.style.padding = '30px 35px';
         container.style.color = '#1e293b';
         container.style.fontFamily = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif";
         container.style.background = '#ffffff';
 
         container.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 12px; margin-bottom: 18px; width: 100%; box-sizing: border-box;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 14px; margin-bottom: 20px; width: 100%; box-sizing: border-box;">
                 <div>
-                    <h1 style="margin: 0; color: #2563eb; font-size: 22px; font-weight: 800; letter-spacing: -0.02em;">Inversiones Morey</h1>
-                    <p style="margin: 3px 0 0; color: #64748b; font-size: 11px;">Calculadora de Margen de Ganancia — Reporte de Productos</p>
+                    <h1 style="margin: 0; color: #2563eb; font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">Inversiones Morey</h1>
+                    <p style="margin: 4px 0 0; color: #64748b; font-size: 11px;">Calculadora de Margen de Ganancia — Reporte de Productos</p>
                 </div>
                 <div style="text-align: right;">
-                    <h2 style="margin: 0; color: #0f172a; font-size: 15px; font-weight: 700;">Reporte de Precios</h2>
+                    <h2 style="margin: 0; color: #0f172a; font-size: 16px; font-weight: 700;">Reporte de Precios</h2>
                     <p style="margin: 3px 0 0; color: #64748b; font-size: 10px;">Fecha: ${new Date().toLocaleDateString()}</p>
                     <span style="display: inline-block; background: #eff6ff; color: #1d4ed8; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-top: 4px; border: 1px solid #bfdbfe;">
                         ${periodText}
@@ -3297,18 +3292,18 @@ class AccountsApp {
             </div>
 
             <!-- Resumen de Costos y Ganancias -->
-            <div style="display: flex; gap: 10px; margin-bottom: 18px; width: 100%; box-sizing: border-box;">
-                <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; text-align: center; box-sizing: border-box;">
+            <div style="display: flex; gap: 12px; margin-bottom: 20px; width: 100%; box-sizing: border-box;">
+                <div style="flex: 1; min-width: 0; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; text-align: center; box-sizing: border-box;">
                     <span style="font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: 700; letter-spacing: 0.04em;">Costo Total</span>
                     <div style="font-size: 15px; font-weight: 800; color: #0f172a; margin: 3px 0;">${this.formatCurrency(totalCost)}</div>
                     <span style="font-size: 9px; color: #64748b;">${this.formatVEF(totalCost)}</span>
                 </div>
-                <div style="flex: 1; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; text-align: center; box-sizing: border-box;">
+                <div style="flex: 1; min-width: 0; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; text-align: center; box-sizing: border-box;">
                     <span style="font-size: 9px; text-transform: uppercase; color: #166534; font-weight: 700; letter-spacing: 0.04em;">Ganancia a Obtener</span>
                     <div style="font-size: 15px; font-weight: 800; color: #15803d; margin: 3px 0;">${this.formatCurrency(totalProf)}</div>
                     <span style="font-size: 9px; color: #166534;">${this.formatVEF(totalProf)}</span>
                 </div>
-                <div style="flex: 1; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; text-align: center; box-sizing: border-box;">
+                <div style="flex: 1; min-width: 0; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; text-align: center; box-sizing: border-box;">
                     <span style="font-size: 9px; text-transform: uppercase; color: #1e40af; font-weight: 700; letter-spacing: 0.04em;">Venta Total Esperada</span>
                     <div style="font-size: 15px; font-weight: 800; color: #2563eb; margin: 3px 0;">${this.formatCurrency(totalSales)}</div>
                     <span style="font-size: 9px; color: #1e40af;">${this.formatVEF(totalSales)}</span>
@@ -3316,36 +3311,36 @@ class AccountsApp {
             </div>
 
             <!-- Tabla de Productos con ancho fijo al 100% -->
-            <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 8px; font-size: 10px; box-sizing: border-box;">
+            <table style="width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 8px; font-size: 10.5px; box-sizing: border-box;">
                 <thead>
-                    <tr style="background: #f1f5f9;">
-                        <th style="width: 32%; padding: 8px 8px; text-align: left; border-bottom: 2px solid #cbd5e1; font-weight: 700; color: #334155; word-wrap: break-word;">Producto</th>
+                    <tr style="background: #f1f5f9; page-break-inside: avoid; break-inside: avoid;">
+                        <th style="width: 32%; padding: 8px 10px; text-align: left; border-bottom: 2px solid #cbd5e1; font-weight: 700; color: #334155; word-wrap: break-word; overflow-wrap: break-word;">Producto</th>
                         <th style="width: 18%; padding: 8px 8px; text-align: right; border-bottom: 2px solid #cbd5e1; font-weight: 700; color: #334155;">Costo</th>
                         <th style="width: 14%; padding: 8px 6px; text-align: center; border-bottom: 2px solid #cbd5e1; font-weight: 700; color: #334155;">Margen</th>
                         <th style="width: 18%; padding: 8px 8px; text-align: right; border-bottom: 2px solid #cbd5e1; font-weight: 700; color: #334155;">Ganancia</th>
-                        <th style="width: 18%; padding: 8px 8px; text-align: right; border-bottom: 2px solid #cbd5e1; font-weight: 700; color: #334155;">Precio Venta</th>
+                        <th style="width: 18%; padding: 8px 10px; text-align: right; border-bottom: 2px solid #cbd5e1; font-weight: 700; color: #334155;">Precio Venta</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${list.map((p, idx) => `
-                        <tr style="background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
-                            <td style="padding: 6px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; word-wrap: break-word; overflow: hidden;">
+                        <tr style="background: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'}; page-break-inside: avoid; break-inside: avoid;">
+                            <td style="padding: 7px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word;">
                                 <div style="font-weight: 600; color: #0f172a; line-height: 1.25;">${this.escapeHTML(p.name)}</div>
-                                <div style="font-size: 8.5px; color: #64748b; margin-top: 1px;">${new Date(p.savedAt).toLocaleDateString()}</div>
+                                <div style="font-size: 8.5px; color: #64748b; margin-top: 2px;">${new Date(p.savedAt).toLocaleDateString()}</div>
                             </td>
-                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
+                            <td style="padding: 7px 8px; text-align: right; border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
                                 <div style="font-weight: 600; color: #1e293b;">${this.formatCurrency(p.cost)}</div>
                                 <div style="font-size: 8.5px; color: #64748b;">${this.formatVEF(p.cost)}</div>
                             </td>
-                            <td style="padding: 6px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
-                                <span style="display: inline-block; background: #dcfce7; color: #15803d; padding: 2px 5px; border-radius: 3px; font-weight: 700; font-size: 9.5px;">${p.margin.toFixed(1)}%</span>
+                            <td style="padding: 7px 6px; text-align: center; border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
+                                <span style="display: inline-block; background: #dcfce7; color: #15803d; padding: 2px 6px; border-radius: 3px; font-weight: 700; font-size: 9.5px;">${p.margin.toFixed(1)}%</span>
                             </td>
-                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #e2e8f0; vertical-align: middle; color: #15803d; font-weight: 600;">
+                            <td style="padding: 7px 8px; text-align: right; border-bottom: 1px solid #e2e8f0; vertical-align: middle; color: #15803d; font-weight: 600;">
                                 <div>${this.formatCurrency(p.profit)}</div>
                                 <div style="font-size: 8.5px; color: #64748b; font-weight: normal;">${this.formatVEF(p.profit)}</div>
                             </td>
-                            <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
-                                <div style="font-weight: 800; color: #2563eb; font-size: 11px;">${this.formatCurrency(p.salePrice)}</div>
+                            <td style="padding: 7px 10px; text-align: right; border-bottom: 1px solid #e2e8f0; vertical-align: middle;">
+                                <div style="font-weight: 800; color: #2563eb; font-size: 11.5px;">${this.formatCurrency(p.salePrice)}</div>
                                 <div style="font-size: 8.5px; color: #15803d; font-weight: 600;">${this.formatVEF(p.salePrice)}</div>
                             </td>
                         </tr>
@@ -3353,26 +3348,22 @@ class AccountsApp {
                 </tbody>
             </table>
 
-            <div style="margin-top: 25px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 12px;">
+            <div style="margin-top: 25px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 12px; page-break-inside: avoid; break-inside: avoid;">
                 <p style="color: #94a3b8; font-size: 9.5px; margin: 0;">Inversiones Morey — Gestión de Cobranzas y Precios. Total de productos incluidos: ${list.length}</p>
             </div>
         `;
 
-        document.body.appendChild(container);
-
         const opt = {
-            margin: [8, 8, 8, 8],
+            margin: 0,
             filename: `Productos_Margen_${new Date().toISOString().split('T')[0]}.pdf`,
             image: { type: 'jpeg', quality: 0.98 },
             html2canvas: {
                 scale: 2,
                 useCORS: true,
-                letterRendering: true,
-                scrollX: 0,
-                scrollY: 0,
-                windowWidth: 1000
+                letterRendering: true
             },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
         };
 
         try {
@@ -3381,10 +3372,6 @@ class AccountsApp {
         } catch (err) {
             console.error('Error al generar PDF de margen:', err);
             this.showToast('Error al exportar el PDF', 'error');
-        } finally {
-            if (container && container.parentNode) {
-                container.parentNode.removeChild(container);
-            }
         }
     }
 
