@@ -9,6 +9,7 @@ class AccountsApp {
         this.isSignUp = false;
         this.clients = [];
         this.transactions = [];
+        this.marginProducts = JSON.parse(localStorage.getItem('ar_margin_products')) || [];
         this.currentViewId = localStorage.getItem('ar_current_view') || 'dashboard-view';
         this.currentClientId = null;
         this.exchangeRate = parseFloat(localStorage.getItem('ar_exchange_rate')) || 1;
@@ -620,6 +621,7 @@ class AccountsApp {
     async handleLogout() {
         await this.supabase.auth.signOut();
         localStorage.removeItem('ar_current_view');
+        this.marginProducts = [];
         this.currentViewId = 'dashboard-view';
         this.handleAuthStateChange(null);
         this.showToast('Sesión cerrada');
@@ -686,6 +688,9 @@ class AccountsApp {
                     createdAt: new Date(t.created_at).getTime()
                 }));
             }
+
+            // Sincronizar productos de margen de ganancia
+            await this.fetchMarginProducts();
         } catch (err) {
             console.error("Sync Error:", err);
             this.showToast('Error al sincronizar con la nube', 'error');
@@ -1140,9 +1145,8 @@ class AccountsApp {
             topHeaderTitle.textContent = titles[viewId] || 'Dashboard';
         }
 
-        if (viewId === 'margin-calc-view' && !this._marginCalcInitialized) {
+        if (viewId === 'margin-calc-view') {
             this.initMarginCalculator();
-            this._marginCalcInitialized = true;
         }
     }
 
@@ -1232,11 +1236,11 @@ class AccountsApp {
             topHeaderTitle.textContent = 'Base de Datos';
         } else if (viewId === 'margin-calc-view') {
             topHeaderTitle.textContent = 'Margen de Ganancia';
-            if (!this._marginCalcInitialized) {
-                this.initMarginCalculator();
-                this._marginCalcInitialized = true;
+            this.initMarginCalculator();
+            if (this.user) {
+                this.fetchMarginProducts();
             } else {
-                this.renderMarginProducts();
+                this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
             }
         }
     }
@@ -2714,49 +2718,83 @@ class AccountsApp {
     // ==========================================
 
     initMarginCalculator() {
-        this.marginProducts = [];
+        if (!this.marginProducts) {
+            this.marginProducts = JSON.parse(localStorage.getItem('ar_margin_products')) || [];
+        }
 
-        // Wire inputs for live calculation
-        const costInput = document.getElementById('marginCost');
-        const pctInput  = document.getElementById('marginPercent');
+        if (!this._marginEventsBound) {
+            // Wire inputs for live calculation
+            const costInput = document.getElementById('marginCost');
+            const pctInput  = document.getElementById('marginPercent');
 
-        if (costInput) costInput.addEventListener('input', () => this.calcMargin());
-        if (pctInput)  pctInput.addEventListener('input',  () => this.calcMargin());
+            if (costInput) costInput.addEventListener('input', () => this.calcMargin());
+            if (pctInput)  pctInput.addEventListener('input',  () => this.calcMargin());
 
-        // Preset buttons
-        document.querySelectorAll('.btn-preset').forEach(btn => {
-            btn.addEventListener('click', () => {
-                document.getElementById('marginPercent').value = btn.dataset.margin;
-                document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                this.calcMargin();
+            // Preset buttons
+            document.querySelectorAll('.btn-preset').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.getElementById('marginPercent').value = btn.dataset.margin;
+                    document.querySelectorAll('.btn-preset').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.calcMargin();
+                });
             });
-        });
 
-        // Save button
-        const saveBtn = document.getElementById('marginSaveBtn');
-        if (saveBtn) saveBtn.addEventListener('click', () => this.saveMarginProduct());
+            // Save button
+            const saveBtn = document.getElementById('marginSaveBtn');
+            if (saveBtn) saveBtn.addEventListener('click', () => this.saveMarginProduct());
 
-        // Clear button
-        const clearBtn = document.getElementById('marginClearBtn');
-        if (clearBtn) clearBtn.addEventListener('click', () => this.clearMarginCalc());
+            // Product name input - press Enter to save
+            const nameInput = document.getElementById('marginProductName');
+            if (nameInput) {
+                nameInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.saveMarginProduct();
+                    }
+                });
+            }
 
-        // Search
-        const searchInput = document.getElementById('marginProductSearch');
-        if (searchInput) searchInput.addEventListener('input', () => this.renderMarginProducts(searchInput.value));
+            // Clear button
+            const clearBtn = document.getElementById('marginClearBtn');
+            if (clearBtn) clearBtn.addEventListener('click', () => this.clearMarginCalc());
 
-        // Export CSV
-        const exportBtn = document.getElementById('marginExportCSVBtn');
-        if (exportBtn) exportBtn.addEventListener('click', () => this.exportMarginCSV());
+            // Search
+            const searchInput = document.getElementById('marginProductSearch');
+            if (searchInput) searchInput.addEventListener('input', () => this.renderMarginProducts(searchInput.value));
 
-        // Load from Supabase
-        this.fetchMarginProducts();
+            // Export CSV
+            const exportBtn = document.getElementById('marginExportCSVBtn');
+            if (exportBtn) exportBtn.addEventListener('click', () => this.exportMarginCSV());
+
+            this._marginEventsBound = true;
+        }
+
+        // Render immediately with existing products
+        this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
+
+        // Load from Supabase if user is authenticated
+        if (this.user) {
+            this.fetchMarginProducts();
+        }
     }
 
     async fetchMarginProducts() {
-        if (!this.user) return;
+        if (!this.user) {
+            const local = localStorage.getItem('ar_margin_products');
+            if (local && (!this.marginProducts || this.marginProducts.length === 0)) {
+                try {
+                    this.marginProducts = JSON.parse(local);
+                    this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
+                } catch (e) {}
+            }
+            return;
+        }
+
         const tbody = document.getElementById('marginProductsTableBody');
-        if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;"><i class="ph ph-circle-notch" style="animation:rotate 1s linear infinite; font-size:1.4rem;"></i></td></tr>`;
+        if (tbody && (!this.marginProducts || this.marginProducts.length === 0)) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;"><i class="ph ph-circle-notch" style="animation:rotate 1s linear infinite; font-size:1.4rem;"></i></td></tr>`;
+        }
 
         try {
             const { data, error } = await this.supabase
@@ -2768,7 +2806,7 @@ class AccountsApp {
             if (error) throw error;
 
             // Map snake_case → camelCase para consistencia interna
-            this.marginProducts = (data || []).map(p => ({
+            let dbProducts = (data || []).map(p => ({
                 id:        p.id,
                 name:      p.name,
                 cost:      parseFloat(p.cost),
@@ -2778,11 +2816,64 @@ class AccountsApp {
                 savedAt:   p.created_at,
             }));
 
-            this.renderMarginProducts();
+            // Recuperar y migrar productos existentes de localStorage (de versiones previas)
+            const localRaw = localStorage.getItem('ar_margin_products');
+            let localList = [];
+            try {
+                localList = localRaw ? JSON.parse(localRaw) : [];
+            } catch (e) {}
+
+            if (localList.length > 0) {
+                for (const lp of localList) {
+                    const alreadyInDb = dbProducts.some(dp => dp.id === lp.id || (dp.name === lp.name && Math.abs(dp.cost - lp.cost) < 0.01));
+                    if (!alreadyInDb && lp.name) {
+                        try {
+                            const { data: inserted } = await this.supabase
+                                .from('margin_products')
+                                .insert({
+                                    user_id:    this.user.id,
+                                    name:       lp.name,
+                                    cost:       lp.cost,
+                                    margin:     lp.margin,
+                                    profit:     lp.profit,
+                                    sale_price: lp.salePrice || lp.sale_price,
+                                    created_at: lp.savedAt || lp.created_at || new Date().toISOString()
+                                })
+                                .select();
+                            if (inserted && inserted[0]) {
+                                dbProducts.unshift({
+                                    id:        inserted[0].id,
+                                    name:      inserted[0].name,
+                                    cost:      parseFloat(inserted[0].cost),
+                                    margin:    parseFloat(inserted[0].margin),
+                                    profit:    parseFloat(inserted[0].profit),
+                                    salePrice: parseFloat(inserted[0].sale_price),
+                                    savedAt:   inserted[0].created_at,
+                                });
+                            } else {
+                                dbProducts.unshift(lp);
+                            }
+                        } catch (e) {
+                            dbProducts.unshift(lp);
+                        }
+                    }
+                }
+            }
+
+            this.marginProducts = dbProducts;
+
+            // Sincronizar cache local
+            localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
+            this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
         } catch (err) {
             console.error('Error cargando productos de margen:', err);
-            this.showToast('Error al cargar productos desde Supabase', 'error');
-            this.renderMarginProducts();
+            const local = localStorage.getItem('ar_margin_products');
+            if (local && (!this.marginProducts || this.marginProducts.length === 0)) {
+                try {
+                    this.marginProducts = JSON.parse(local);
+                } catch (e) {}
+            }
+            this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
         }
     }
 
@@ -2833,63 +2924,80 @@ class AccountsApp {
         }
 
         const nameInput = document.getElementById('marginProductName');
-        const name = nameInput.value.trim();
+        const name = nameInput ? nameInput.value.trim() : '';
         if (!name) {
             this.showToast('Escribe un nombre para el producto', 'warning');
-            nameInput.focus();
-            return;
-        }
-
-        if (!this.user) {
-            this.showToast('Debes iniciar sesión para guardar productos', 'error');
+            if (nameInput) nameInput.focus();
             return;
         }
 
         const saveBtn = document.getElementById('marginSaveBtn');
-        if (saveBtn) { saveBtn.disabled = true; saveBtn.innerHTML = '<i class="ph ph-circle-notch" style="animation:rotate 1s linear infinite;"></i> Guardando...'; }
+        if (saveBtn) { 
+            saveBtn.disabled = true; 
+            saveBtn.innerHTML = '<i class="ph ph-circle-notch" style="animation:rotate 1s linear infinite;"></i> Guardando...'; 
+        }
 
         const { cost, pct, salePrice, profit } = this._currentCalc;
+        const tempId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : Date.now().toString();
+        const newProduct = {
+            id:        tempId,
+            name:      name,
+            cost:      parseFloat(cost),
+            margin:    parseFloat(pct),
+            profit:    parseFloat(profit),
+            salePrice: parseFloat(salePrice),
+            savedAt:   new Date().toISOString(),
+        };
 
         try {
-            const { data, error } = await this.supabase
-                .from('margin_products')
-                .insert({
-                    user_id:    this.user.id,
-                    name:       name,
-                    cost:       cost,
-                    margin:     pct,
-                    profit:     profit,
-                    sale_price: salePrice,
-                })
-                .select()
-                .single();
+            if (this.user) {
+                const { data, error } = await this.supabase
+                    .from('margin_products')
+                    .insert({
+                        user_id:    this.user.id,
+                        name:       name,
+                        cost:       cost,
+                        margin:     pct,
+                        profit:     profit,
+                        sale_price: salePrice,
+                    })
+                    .select();
 
-            if (error) throw error;
+                if (error) throw error;
 
-            // Add to local array (top)
-            this.marginProducts.unshift({
-                id:        data.id,
-                name:      data.name,
-                cost:      parseFloat(data.cost),
-                margin:    parseFloat(data.margin),
-                profit:    parseFloat(data.profit),
-                salePrice: parseFloat(data.sale_price),
-                savedAt:   data.created_at,
-            });
+                if (data && data[0]) {
+                    newProduct.id = data[0].id;
+                    if (data[0].created_at) newProduct.savedAt = data[0].created_at;
+                }
+            }
 
-            this.renderMarginProducts();
-            nameInput.value = '';
+            // Agregar al inicio del arreglo local (el más reciente)
+            if (!this.marginProducts) this.marginProducts = [];
+            this.marginProducts.unshift(newProduct);
+            localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
+
+            this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
+            if (nameInput) nameInput.value = '';
             this.showToast(`"${this.escapeHTML(name)}" guardado con éxito`, 'success');
         } catch (err) {
             console.error('Error guardando producto:', err);
-            // Si la tabla no existe aún, avisa con mensaje claro
+            // Si ocurre algún fallo con la red o Supabase, respaldar de forma segura en local
+            if (!this.marginProducts) this.marginProducts = [];
+            this.marginProducts.unshift(newProduct);
+            localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
+            this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
+            if (nameInput) nameInput.value = '';
+
             if (err.code === '42P01') {
-                this.showToast('La tabla margin_products no existe. Ejecuta el SQL en Supabase primero.', 'error');
+                this.showToast('Guardado localmente. Recuerda ejecutar el SQL en Supabase.', 'warning');
             } else {
-                this.showToast('Error al guardar en Supabase: ' + (err.message || ''), 'error');
+                this.showToast(`"${this.escapeHTML(name)}" guardado localmente`, 'warning');
             }
         } finally {
-            if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = '<i class="ph ph-floppy-disk"></i> Guardar Producto'; }
+            if (saveBtn) { 
+                saveBtn.disabled = false; 
+                saveBtn.innerHTML = '<i class="ph ph-floppy-disk"></i> Guardar Producto'; 
+            }
         }
     }
 
@@ -2898,28 +3006,36 @@ class AccountsApp {
         if (!confirmed) return;
 
         try {
-            const { error } = await this.supabase
-                .from('margin_products')
-                .delete()
-                .eq('id', id)
-                .eq('user_id', this.user.id);
+            if (this.user) {
+                const { error } = await this.supabase
+                    .from('margin_products')
+                    .delete()
+                    .eq('id', id)
+                    .eq('user_id', this.user.id);
 
-            if (error) throw error;
+                if (error) console.warn('Supabase delete error:', error);
+            }
 
-            this.marginProducts = this.marginProducts.filter(p => p.id !== id);
-            this.renderMarginProducts();
+            this.marginProducts = (this.marginProducts || []).filter(p => p.id !== id);
+            localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
+            this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
             this.showToast('Producto eliminado', 'info');
         } catch (err) {
             console.error('Error eliminando producto:', err);
-            this.showToast('Error al eliminar el producto', 'error');
+            this.marginProducts = (this.marginProducts || []).filter(p => p.id !== id);
+            localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
+            this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
+            this.showToast('Producto eliminado', 'info');
         }
     }
 
     loadMarginProduct(id) {
-        const product = this.marginProducts.find(p => p.id === id);
+        const product = (this.marginProducts || []).find(p => p.id === id);
         if (!product) return;
         document.getElementById('marginCost').value    = product.cost;
         document.getElementById('marginPercent').value = product.margin;
+        const nameInput = document.getElementById('marginProductName');
+        if (nameInput) nameInput.value = product.name;
         document.querySelectorAll('.btn-preset').forEach(b => {
             b.classList.toggle('active', parseFloat(b.dataset.margin) === product.margin);
         });
@@ -2930,20 +3046,37 @@ class AccountsApp {
     renderMarginProducts(filter = '') {
         const tbody = document.getElementById('marginProductsTableBody');
         const empty = document.getElementById('emptyMarginState');
+        const badge = document.getElementById('marginCountBadge');
         if (!tbody) return;
 
-        const term = filter.toLowerCase().trim();
-        const list = this.marginProducts.filter(p => !term || p.name.toLowerCase().includes(term));
+        const term = (filter || '').toLowerCase().trim();
+        const list = (this.marginProducts || []).filter(p => !term || (p.name && p.name.toLowerCase().includes(term)));
 
         tbody.innerHTML = '';
 
         if (list.length === 0) {
-            empty.classList.remove('hidden');
+            if (empty) empty.classList.remove('hidden');
+            if (badge) {
+                badge.textContent = term ? '0 productos encontrados' : '0 productos guardados';
+            }
             return;
         }
-        empty.classList.add('hidden');
+        if (empty) empty.classList.add('hidden');
 
-        list.forEach(p => {
+        // Solo visibles los últimos 20 productos que se agregaron
+        const displayedList = list.slice(0, 20);
+
+        if (badge) {
+            if (term) {
+                badge.textContent = `Mostrando ${displayedList.length} de ${list.length} encontrados`;
+            } else if (list.length > 20) {
+                badge.textContent = `Mostrando los últimos 20 de ${list.length} productos guardados`;
+            } else {
+                badge.textContent = `Últimos ${list.length} productos agregados`;
+            }
+        }
+
+        displayedList.forEach(p => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>

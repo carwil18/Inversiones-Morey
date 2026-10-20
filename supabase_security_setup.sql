@@ -3,6 +3,18 @@
 -- Ejecuta este script en el "SQL Editor" de tu panel de Supabase
 -- ============================================================
 
+-- 0. Crear tabla margin_products si aún no existe
+CREATE TABLE IF NOT EXISTS public.margin_products (
+    id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id     uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL DEFAULT auth.uid(),
+    name        text NOT NULL,
+    cost        numeric(12, 4) NOT NULL,
+    margin      numeric(6, 4) NOT NULL,
+    profit      numeric(12, 4) NOT NULL,
+    sale_price  numeric(12, 4) NOT NULL,
+    created_at  timestamptz DEFAULT now() NOT NULL
+);
+
 -- 1. Habilitar RLS (Row Level Security) en todas las tablas
 ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
@@ -13,6 +25,9 @@ ALTER TABLE public.clients
     ALTER COLUMN user_id SET DEFAULT auth.uid();
 
 ALTER TABLE public.transactions 
+    ALTER COLUMN user_id SET DEFAULT auth.uid();
+
+ALTER TABLE public.margin_products 
     ALTER COLUMN user_id SET DEFAULT auth.uid();
 
 -- 3. Índices de rendimiento (Acelera búsquedas y filtrados de cada usuario)
