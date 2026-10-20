@@ -2767,6 +2767,20 @@ class AccountsApp {
             const exportBtn = document.getElementById('marginExportCSVBtn');
             if (exportBtn) exportBtn.addEventListener('click', () => this.exportMarginCSV());
 
+            // Export PDF
+            const exportPDFBtn = document.getElementById('marginExportPDFBtn');
+            if (exportPDFBtn) exportPDFBtn.addEventListener('click', () => this.exportMarginPDF());
+
+            // Period selector tabs (Días, Semanas, Mes, Todos)
+            document.querySelectorAll('#marginPeriodTabs .btn-period-pill').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('#marginPeriodTabs .btn-period-pill').forEach(b => b.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    this._marginPeriodFilter = e.currentTarget.dataset.period || 'all';
+                    this.renderMarginProducts(document.getElementById('marginProductSearch')?.value || '');
+                });
+            });
+
             this._marginEventsBound = true;
         }
 
@@ -2825,14 +2839,15 @@ class AccountsApp {
 
             if (localList.length > 0) {
                 for (const lp of localList) {
-                    const alreadyInDb = dbProducts.some(dp => dp.id === lp.id || (dp.name === lp.name && Math.abs(dp.cost - lp.cost) < 0.01));
+                    const normLpName = (lp.name || '').trim().toLowerCase();
+                    const alreadyInDb = dbProducts.some(dp => dp.id === lp.id || (dp.name && dp.name.trim().toLowerCase() === normLpName));
                     if (!alreadyInDb && lp.name) {
                         try {
                             const { data: inserted } = await this.supabase
                                 .from('margin_products')
                                 .insert({
                                     user_id:    this.user.id,
-                                    name:       lp.name,
+                                    name:       lp.name.trim(),
                                     cost:       lp.cost,
                                     margin:     lp.margin,
                                     profit:     lp.profit,
@@ -2860,7 +2875,17 @@ class AccountsApp {
                 }
             }
 
-            this.marginProducts = dbProducts;
+            // Deduplicar productos para garantizar que no se repitan nombres
+            const seenNames = new Set();
+            const uniqueProducts = [];
+            for (const p of dbProducts) {
+                const normName = (p.name || '').trim().toLowerCase();
+                if (!seenNames.has(normName)) {
+                    seenNames.add(normName);
+                    uniqueProducts.push(p);
+                }
+            }
+            this.marginProducts = uniqueProducts;
 
             // Sincronizar cache local
             localStorage.setItem('ar_margin_products', JSON.stringify(this.marginProducts));
@@ -2928,6 +2953,20 @@ class AccountsApp {
         if (!name) {
             this.showToast('Escribe un nombre para el producto', 'warning');
             if (nameInput) nameInput.focus();
+            return;
+        }
+
+        // Validación para evitar nombres de productos duplicados
+        const normalizedName = name.toLowerCase();
+        const exists = (this.marginProducts || []).some(
+            p => p.name && p.name.trim().toLowerCase() === normalizedName
+        );
+        if (exists) {
+            this.showToast(`El producto "${name}" ya existe en la lista. Usa otro nombre para evitar duplicados.`, 'warning');
+            if (nameInput) {
+                nameInput.focus();
+                nameInput.select();
+            }
             return;
         }
 
@@ -3043,36 +3082,99 @@ class AccountsApp {
         document.querySelector('.margin-calc-card').scrollIntoView({ behavior: 'smooth' });
     }
 
+    _getFilteredMarginProducts(filter = '', period = 'all') {
+        const term = (filter || '').toLowerCase().trim();
+        const now = new Date();
+
+        return (this.marginProducts || []).filter(p => {
+            // Filtro por texto de búsqueda
+            if (term && !(p.name && p.name.toLowerCase().includes(term))) {
+                return false;
+            }
+
+            // Filtro por período de registro
+            if (period && period !== 'all') {
+                const pDate = new Date(p.savedAt);
+                if (isNaN(pDate.getTime())) return true;
+
+                if (period === 'day') {
+                    // Mismo día calendario o últimas 24 horas
+                    const isSameDay = pDate.getFullYear() === now.getFullYear() &&
+                                      pDate.getMonth() === now.getMonth() &&
+                                      pDate.getDate() === now.getDate();
+                    const isLast24h = (now.getTime() - pDate.getTime()) <= 24 * 60 * 60 * 1000;
+                    return isSameDay || isLast24h;
+                } else if (period === 'week') {
+                    // Últimos 7 días
+                    return (now.getTime() - pDate.getTime()) <= 7 * 24 * 60 * 60 * 1000;
+                } else if (period === 'month') {
+                    // Mismo mes calendario o últimos 30 días
+                    const isSameMonth = pDate.getFullYear() === now.getFullYear() &&
+                                        pDate.getMonth() === now.getMonth();
+                    const isLast30d = (now.getTime() - pDate.getTime()) <= 30 * 24 * 60 * 60 * 1000;
+                    return isSameMonth || isLast30d;
+                }
+            }
+
+            return true;
+        });
+    }
+
+    updateMarginKPIs(list) {
+        const totalCostEl   = document.getElementById('marginTotalCost');
+        const totalCostVEF  = document.getElementById('marginTotalCostVEF');
+        const totalProfEl   = document.getElementById('marginTotalProfit');
+        const totalProfVEF  = document.getElementById('marginTotalProfitVEF');
+        const totalSalesEl  = document.getElementById('marginTotalSales');
+        const totalSalesVEF = document.getElementById('marginTotalSalesVEF');
+
+        const cost  = (list || []).reduce((sum, p) => sum + (p.cost || 0), 0);
+        const prof  = (list || []).reduce((sum, p) => sum + (p.profit || 0), 0);
+        const sales = (list || []).reduce((sum, p) => sum + (p.salePrice || 0), 0);
+
+        if (totalCostEl)   totalCostEl.textContent   = this.formatCurrency(cost);
+        if (totalCostVEF)  totalCostVEF.textContent  = this.formatVEF(cost);
+        if (totalProfEl)   totalProfEl.textContent   = this.formatCurrency(prof);
+        if (totalProfVEF)  totalProfVEF.textContent  = this.formatVEF(prof);
+        if (totalSalesEl)  totalSalesEl.textContent  = this.formatCurrency(sales);
+        if (totalSalesVEF) totalSalesVEF.textContent = this.formatVEF(sales);
+    }
+
     renderMarginProducts(filter = '') {
         const tbody = document.getElementById('marginProductsTableBody');
         const empty = document.getElementById('emptyMarginState');
         const badge = document.getElementById('marginCountBadge');
         if (!tbody) return;
 
-        const term = (filter || '').toLowerCase().trim();
-        const list = (this.marginProducts || []).filter(p => !term || (p.name && p.name.toLowerCase().includes(term)));
+        const period = this._marginPeriodFilter || 'all';
+        const list = this._getFilteredMarginProducts(filter, period);
+
+        // Actualizar KPIs de Costo Total y Ganancia a Obtener según el filtro actual
+        this.updateMarginKPIs(list);
 
         tbody.innerHTML = '';
 
         if (list.length === 0) {
             if (empty) empty.classList.remove('hidden');
             if (badge) {
-                badge.textContent = term ? '0 productos encontrados' : '0 productos guardados';
+                badge.textContent = filter ? '0 productos encontrados' : '0 productos en este período';
             }
             return;
         }
         if (empty) empty.classList.add('hidden');
 
-        // Solo visibles los últimos 20 productos que se agregaron
+        // Solo visibles los últimos 20 productos que se agregaron de la lista filtrada
         const displayedList = list.slice(0, 20);
 
         if (badge) {
-            if (term) {
-                badge.textContent = `Mostrando ${displayedList.length} de ${list.length} encontrados`;
+            const periodLabels = { all: '', day: ' (Hoy/Día)', week: ' (Semana)', month: ' (Mes)' };
+            const pSuffix = periodLabels[period] || '';
+            if (filter) {
+                badge.textContent = `Mostrando ${displayedList.length} de ${list.length} encontrados${pSuffix}`;
             } else if (list.length > 20) {
-                badge.textContent = `Mostrando los últimos 20 de ${list.length} productos guardados`;
+                badge.textContent = `Mostrando los últimos 20 de ${list.length} productos${pSuffix}`;
             } else {
-                badge.textContent = `Últimos ${list.length} productos agregados`;
+                badge.textContent = `Mostrando ${list.length} productos agregados${pSuffix}`;
             }
         }
 
@@ -3121,14 +3223,16 @@ class AccountsApp {
     }
 
     exportMarginCSV() {
-        if (!this.marginProducts || this.marginProducts.length === 0) {
+        const filter = document.getElementById('marginProductSearch')?.value || '';
+        const list = this._getFilteredMarginProducts(filter, this._marginPeriodFilter || 'all');
+        if (!list || list.length === 0) {
             this.showToast('No hay productos para exportar', 'warning');
             return;
         }
         const headers = ['Producto', 'Costo ($)', 'Margen (%)', 'Ganancia ($)', 'Precio Venta ($)', 'Fecha'];
         let csv = headers.join(',') + '\n';
-        this.marginProducts.forEach(p => {
-            const name = `"${p.name.replace(/"/g, '""')}"`;
+        list.forEach(p => {
+            const name = `"${(p.name || '').replace(/"/g, '""')}"`;
             csv += [name, p.cost.toFixed(2), p.margin.toFixed(1), p.profit.toFixed(2), p.salePrice.toFixed(2), new Date(p.savedAt).toLocaleDateString()].join(',') + '\n';
         });
         const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
@@ -3137,6 +3241,131 @@ class AccountsApp {
         a.href = url; a.download = `Productos_Margen_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         this.showToast('CSV exportado con éxito', 'success');
+    }
+
+    async exportMarginPDF() {
+        const filter = document.getElementById('marginProductSearch')?.value || '';
+        const period = this._marginPeriodFilter || 'all';
+        const list = this._getFilteredMarginProducts(filter, period);
+
+        if (!list || list.length === 0) {
+            this.showToast('No hay productos para exportar en este período', 'warning');
+            return;
+        }
+
+        this.showToast('Generando reporte PDF...', 'info');
+
+        const totalCost  = list.reduce((sum, p) => sum + (p.cost || 0), 0);
+        const totalProf  = list.reduce((sum, p) => sum + (p.profit || 0), 0);
+        const totalSales = list.reduce((sum, p) => sum + (p.salePrice || 0), 0);
+
+        const periodLabels = {
+            all: 'Todos los registros',
+            day: 'Registro del Día (Hoy)',
+            week: 'Registro de la Semana (Últimos 7 días)',
+            month: 'Registro del Mes (Últimos 30 días)'
+        };
+        const periodText = periodLabels[period] || 'Todos los registros';
+
+        // Elemento temporal para html2pdf
+        const container = document.createElement('div');
+        container.style.padding = '35px';
+        container.style.color = '#1e293b';
+        container.style.fontFamily = "'Inter', sans-serif";
+        container.style.background = '#ffffff';
+        container.style.width = '800px';
+
+        container.innerHTML = `
+            <div style="display: flex; justify-content: space-between; border-bottom: 2px solid #3b82f6; padding-bottom: 16px; margin-bottom: 24px;">
+                <div>
+                    <h1 style="margin: 0; color: #3b82f6; font-size: 1.7rem; font-weight: 700;">Inversiones Morey</h1>
+                    <p style="margin: 4px 0 0; color: #64748b; font-size: 0.85rem;">Calculadora de Margen de Ganancia — Reporte de Productos</p>
+                </div>
+                <div style="text-align: right;">
+                    <h2 style="margin: 0; color: #1e293b; font-size: 1.25rem;">Reporte de Precios</h2>
+                    <p style="margin: 4px 0 0; color: #64748b; font-size: 0.8rem;">Fecha: ${new Date().toLocaleDateString()}</p>
+                    <span style="display: inline-block; background: #eff6ff; color: #1d4ed8; padding: 3px 10px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-top: 5px; border: 1px solid #bfdbfe;">
+                        ${periodText}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Resumen de Costos y Ganancias -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 24px;">
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: center;">
+                    <span style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 600; letter-spacing: 0.05em;">Costo Total</span>
+                    <div style="font-size: 1.35rem; font-weight: 700; color: #1e293b; margin: 4px 0;">${this.formatCurrency(totalCost)}</div>
+                    <span style="font-size: 0.75rem; color: #64748b;">${this.formatVEF(totalCost)}</span>
+                </div>
+                <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; text-align: center;">
+                    <span style="font-size: 0.72rem; text-transform: uppercase; color: #166534; font-weight: 600; letter-spacing: 0.05em;">Ganancia a Obtener</span>
+                    <div style="font-size: 1.35rem; font-weight: 700; color: #15803d; margin: 4px 0;">${this.formatCurrency(totalProf)}</div>
+                    <span style="font-size: 0.75rem; color: #166534;">${this.formatVEF(totalProf)}</span>
+                </div>
+                <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; text-align: center;">
+                    <span style="font-size: 0.72rem; text-transform: uppercase; color: #1e40af; font-weight: 600; letter-spacing: 0.05em;">Venta Total Proyectada</span>
+                    <div style="font-size: 1.35rem; font-weight: 700; color: #2563eb; margin: 4px 0;">${this.formatCurrency(totalSales)}</div>
+                    <span style="font-size: 0.75rem; color: #1e40af;">${this.formatVEF(totalSales)}</span>
+                </div>
+            </div>
+
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem;">
+                <thead>
+                    <tr style="background: #f1f5f9;">
+                        <th style="padding: 10px 12px; text-align: left; border-bottom: 2px solid #cbd5e1;">Producto</th>
+                        <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #cbd5e1;">Costo</th>
+                        <th style="padding: 10px 12px; text-align: center; border-bottom: 2px solid #cbd5e1;">Margen</th>
+                        <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #cbd5e1;">Ganancia</th>
+                        <th style="padding: 10px 12px; text-align: right; border-bottom: 2px solid #cbd5e1;">Precio Venta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${list.map(p => `
+                        <tr>
+                            <td style="padding: 9px 12px; border-bottom: 1px solid #f1f5f9;">
+                                <strong>${this.escapeHTML(p.name)}</strong><br>
+                                <span style="font-size: 0.72rem; color: #64748b;">${new Date(p.savedAt).toLocaleDateString()}</span>
+                            </td>
+                            <td style="padding: 9px 12px; text-align: right; border-bottom: 1px solid #f1f5f9;">
+                                <div>${this.formatCurrency(p.cost)}</div>
+                                <div style="font-size: 0.7rem; color: #64748b;">${this.formatVEF(p.cost)}</div>
+                            </td>
+                            <td style="padding: 9px 12px; text-align: center; border-bottom: 1px solid #f1f5f9;">
+                                <span style="background: #dcfce7; color: #15803d; padding: 2px 7px; border-radius: 4px; font-weight: 600; font-size: 0.75rem;">${p.margin.toFixed(1)}%</span>
+                            </td>
+                            <td style="padding: 9px 12px; text-align: right; border-bottom: 1px solid #f1f5f9; color: #15803d; font-weight: 600;">
+                                <div>${this.formatCurrency(p.profit)}</div>
+                                <div style="font-size: 0.7rem; color: #64748b; font-weight: normal;">${this.formatVEF(p.profit)}</div>
+                            </td>
+                            <td style="padding: 9px 12px; text-align: right; border-bottom: 1px solid #f1f5f9; font-weight: 700; color: #2563eb;">
+                                <div>${this.formatCurrency(p.salePrice)}</div>
+                                <div style="font-size: 0.7rem; color: #15803d; font-weight: 600;">${this.formatVEF(p.salePrice)}</div>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+
+            <div style="margin-top: 35px; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 18px;">
+                <p style="color: #94a3b8; font-size: 0.75rem; margin: 0;">Inversiones Morey — Gestión de Cobranzas y Precios. Total de productos incluidos: ${list.length}</p>
+            </div>
+        `;
+
+        const opt = {
+            margin: [8, 8, 8, 8],
+            filename: `Productos_Margen_${new Date().toISOString().split('T')[0]}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        try {
+            await html2pdf().from(container).set(opt).save();
+            this.showToast('PDF exportado exitosamente', 'success');
+        } catch (err) {
+            console.error('Error al generar PDF de margen:', err);
+            this.showToast('Error al exportar el PDF', 'error');
+        }
     }
 
 }

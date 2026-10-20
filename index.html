@@ -789,12 +789,12 @@
 
                         <!-- Tabla de Productos Guardados -->
                         <div class="glass-card table-card margin-products-card">
-                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
                                 <div>
                                     <h3>Productos Guardados</h3>
                                     <span class="text-xs" style="color: var(--text-secondary); display: block; margin-top: 2px;" id="marginCountBadge">Últimos 20 productos agregados</span>
                                 </div>
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
                                     <div class="search-bar" style="padding: 0.2rem 0.8rem;">
                                         <i class="ph ph-magnifying-glass" style="font-size: 0.9rem;"></i>
                                         <input type="text" id="marginProductSearch" placeholder="Buscar producto..." style="font-size: 0.8rem;">
@@ -802,6 +802,48 @@
                                     <button class="btn btn-sm btn-secondary" id="marginExportCSVBtn" title="Exportar a CSV">
                                         <i class="ph ph-file-csv"></i> CSV
                                     </button>
+                                    <button class="btn btn-sm btn-secondary" id="marginExportPDFBtn" title="Exportar a PDF">
+                                        <i class="ph ph-file-pdf"></i> PDF
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Filtro por Período de Registro -->
+                            <div class="margin-period-filter-bar">
+                                <span class="period-label"><i class="ph ph-calendar"></i> Registro:</span>
+                                <div class="period-pills" id="marginPeriodTabs">
+                                    <button type="button" class="btn-period-pill active" data-period="all">Todos</button>
+                                    <button type="button" class="btn-period-pill" data-period="day">Hoy / Día</button>
+                                    <button type="button" class="btn-period-pill" data-period="week">Semana</button>
+                                    <button type="button" class="btn-period-pill" data-period="month">Mes</button>
+                                </div>
+                            </div>
+
+                            <!-- KPIs de Totales de Costo y Ganancia Esperada -->
+                            <div class="margin-kpi-grid">
+                                <div class="margin-kpi-card">
+                                    <div class="kpi-icon-wrap"><i class="ph ph-receipt"></i></div>
+                                    <div class="kpi-content">
+                                        <span class="kpi-title">Costo Total</span>
+                                        <div class="kpi-amount" id="marginTotalCost">$0.00</div>
+                                        <span class="kpi-amount-vef" id="marginTotalCostVEF">Bs. 0,00</span>
+                                    </div>
+                                </div>
+                                <div class="margin-kpi-card green">
+                                    <div class="kpi-icon-wrap green"><i class="ph ph-trend-up"></i></div>
+                                    <div class="kpi-content">
+                                        <span class="kpi-title">Ganancia a Obtener</span>
+                                        <div class="kpi-amount green" id="marginTotalProfit">$0.00</div>
+                                        <span class="kpi-amount-vef green" id="marginTotalProfitVEF">Bs. 0,00</span>
+                                    </div>
+                                </div>
+                                <div class="margin-kpi-card blue">
+                                    <div class="kpi-icon-wrap blue"><i class="ph ph-currency-circle-dollar"></i></div>
+                                    <div class="kpi-content">
+                                        <span class="kpi-title">Venta Total Esperada</span>
+                                        <div class="kpi-amount blue" id="marginTotalSales">$0.00</div>
+                                        <span class="kpi-amount-vef" id="marginTotalSalesVEF">Bs. 0,00</span>
+                                    </div>
                                 </div>
                             </div>
                             <div class="table-container">
